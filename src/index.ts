@@ -2,7 +2,7 @@ import http from "node:http";
 import { WebSocketServer, WebSocket } from "ws";
 
 const port = Number(process.env.PORT) || 3000;
-const TICK_RATE = 20;
+const TICK_RATE = 60;
 const TICK_MS = 1000 / TICK_RATE;
 const PLAYER_SIZE = 40;
 const WORLD_WIDTH = 800;
