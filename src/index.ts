@@ -1,15 +1,30 @@
+import http from "node:http";
 import { WebSocketServer } from "ws";
 
 const port = Number(process.env.PORT) || 3000;
 
-const wss = new WebSocketServer({ port });
+const server = http.createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ status: "ok" }));
+    return;
+  }
 
-console.log("Game server running on port", port);
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.end("Neon Arena game server is running");
+});
+
+const wss = new WebSocketServer({ server });
 
 wss.on("connection", (ws) => {
   console.log("player connected");
 
-  ws.send(JSON.stringify({ type: "connected" }));
+  ws.send(
+    JSON.stringify({
+      type: "connected",
+      message: "welcome to neon arena server",
+    })
+  );
 
   ws.on("message", (data) => {
     console.log("received:", data.toString());
@@ -18,4 +33,8 @@ wss.on("connection", (ws) => {
   ws.on("close", () => {
     console.log("player disconnected");
   });
+});
+
+server.listen(port, () => {
+  console.log("Game server running on port", port);
 });
