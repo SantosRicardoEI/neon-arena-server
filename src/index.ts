@@ -1,7 +1,7 @@
 import http from "node:http";
 import { WebSocketServer } from "ws";
 
-const port = Number(process.env.PORT) || 3000;
+const port = 3000;
 
 const server = http.createServer((req, res) => {
   if (req.url === "/health") {
@@ -35,6 +35,6 @@ wss.on("connection", (ws) => {
   });
 });
 
-server.listen(port, () => {
+server.listen(port, "0.0.0.0", () => {
   console.log("Game server running on port", port);
 });
