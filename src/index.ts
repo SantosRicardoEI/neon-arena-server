@@ -23,6 +23,7 @@ type Player = {
   y: number;
   input: PlayerInput;
   ws: WebSocket;
+  lastProcessedInput: number;
 };
 
 const players: Record<string, Player> = {};
@@ -70,6 +71,7 @@ function buildPublicPlayersState() {
         name: player.name,
         x: player.x,
         y: player.y,
+        lastProcessedInput: player.lastProcessedInput,
       },
     ])
   );
@@ -120,6 +122,7 @@ wss.on("connection", (ws) => {
     y: spawn.y,
     input: createInitialInput(),
     ws,
+    lastProcessedInput: 0,
   };
 
   console.log("player connected:", id);
@@ -135,11 +138,12 @@ wss.on("connection", (ws) => {
 
   ws.on("message", (data) => {
     try {
-      const message = JSON.parse(data.toString()) as {
-        type?: string;
-        name?: unknown;
-        input?: Partial<PlayerInput>;
-      };
+        const message = JSON.parse(data.toString()) as {
+          type?: string;
+          name?: unknown;
+          input?: Partial<PlayerInput>;
+          sequence?: unknown;
+        };
 
       const player = players[id];
       if (!player) return;
@@ -160,7 +164,11 @@ wss.on("connection", (ws) => {
           left: Boolean(input.left),
           right: Boolean(input.right),
         };
-      }
+
+  if (typeof message.sequence === "number") {
+    player.lastProcessedInput = message.sequence;
+  }
+}
     } catch (error) {
       console.log("invalid message:", error);
     }
