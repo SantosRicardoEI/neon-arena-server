@@ -160,8 +160,6 @@ wss.on('connection', (ws) => {
     const message = JSON.parse(raw.toString()) as ClientMessage;
     const client = clients.get(clientId);
 
-    console.log('[server] message from', clientId, message.type, message);
-
     if (!client) return;
 
     if (message.type === 'client:list_rooms') {
