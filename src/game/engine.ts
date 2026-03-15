@@ -572,26 +572,30 @@ export class GameEngine {
       p.skin = data.skin || p.skin;
 
       // Para já: aplicar posição autoritária diretamente
-      if (pid === this.localPlayerId) {
-        const dx = data.x - p.pos.x;
-        const dy = data.y - p.pos.y;
-        const distSq = dx * dx + dy * dy;
+        if (pid === this.localPlayerId) {
+          const dx = data.x - p.pos.x;
+          const dy = data.y - p.pos.y;
+          const distSq = dx * dx + dy * dy;
 
-        if (distSq > 400) {
+          // erro grande = snap
+          if (distSq > 2500) {
+            p.pos.x = data.x;
+            p.pos.y = data.y;
+          }
+          // erro médio = correção mais forte
+          else if (distSq > 100) {
+            p.pos.x += dx * 0.35;
+            p.pos.y += dy * 0.35;
+          }
+          // erro pequeno = não mexer
+          // deixa a prediction local seguir
+          p.aimAngle = data.aimAngle;
+
+        } else {
           p.pos.x = data.x;
           p.pos.y = data.y;
-        } else {
-          p.pos.x += dx * 0.1;
-          p.pos.y += dy * 0.1;
+          p.aimAngle = data.aimAngle;
         }
-
-        p.aimAngle = data.aimAngle;
-
-      } else {
-        p.pos.x = data.x;
-        p.pos.y = data.y;
-        p.aimAngle = data.aimAngle;
-      }
 
       p.health = data.health;
       p.score = data.score;
