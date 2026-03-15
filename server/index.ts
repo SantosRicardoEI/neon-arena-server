@@ -233,10 +233,10 @@ wss.on('connection', (ws) => {
       client.roomId = message.roomId;
       room.clients.set(clientId, client);
 
-      const handled = applyClientMessage(room.state, clientId, message, Date.now());
+      const ok = applyClientMessage(room.state, clientId, message, Date.now());
 
-      if (!handled) {
-        console.warn('[server] unhandled join:', clientId, message.type);
+      if (!ok) {
+        console.warn('[server] message rejected:', clientId, message.type);
       }
 
       safeSend(ws, {
