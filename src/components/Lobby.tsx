@@ -13,7 +13,8 @@ type ActiveRoom = {
   playerCount: number;
 };
 
-const SERVER_URL = "ws://localhost:3001";
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL || "ws://localhost:3001";
 
 const Lobby = ({ onJoinRoom, onBack }: LobbyProps) => {
   const [rooms, setRooms] = useState<ActiveRoom[]>([]);
