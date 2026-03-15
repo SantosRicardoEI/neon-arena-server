@@ -63,22 +63,31 @@ function handleInput(
   msg: ClientInputMessage,
   now: number,
 ): boolean {
-    const player = state.players.get(playerId);
-    if (!player || player.health <= 0) return false;
+  const player = state.players.get(playerId);
 
-    // concluir reload quando o tempo acabar
-    if (player.reloadingUntil > 0 && now >= player.reloadingUntil) {
-      player.ammo = getMagazineSize(player.score);
-      player.reloadingUntil = 0;
-    }
+  if (!player) {
+    console.warn('[server] input rejected: player not found', { playerId, seq: msg.seq });
+    return false;
+  }
 
-    const hasSpeed = playerHasPowerUp(player, 'speed', now);
-    const vel = computeMovementVelocity(msg.moveDir, player.score, hasSpeed);
-    player.vel.x = vel.x;
-    player.vel.y = vel.y;
-    player.aimAngle = msg.aimAngle;
-    player.lastProcessedInputSeq = msg.seq;
-    return true;
+  if (player.health <= 0) {
+    console.warn('[server] input rejected: player dead', { playerId, seq: msg.seq });
+    return false;
+  }
+
+  if (player.reloadingUntil > 0 && now >= player.reloadingUntil) {
+    player.ammo = getMagazineSize(player.score);
+    player.reloadingUntil = 0;
+  }
+
+  const hasSpeed = playerHasPowerUp(player, 'speed', now);
+  const vel = computeMovementVelocity(msg.moveDir, player.score, hasSpeed);
+  player.vel.x = vel.x;
+  player.vel.y = vel.y;
+  player.aimAngle = msg.aimAngle;
+  player.lastProcessedInputSeq = msg.seq;
+
+  return true;
 }
 
 function handleShoot(
