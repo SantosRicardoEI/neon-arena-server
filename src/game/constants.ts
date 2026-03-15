@@ -224,7 +224,7 @@ export const ENEMY_DAMAGE = ENEMY_NORMAL_DAMAGE;
 /** Tamanho visual dos coletáveis de pontos (px) */
 export const COLLECTIBLE_SIZE = 16;
 /** Número inicial de coletáveis no mapa */
-export const INITIAL_COLLECTIBLES = 100;
+export const INITIAL_COLLECTIBLES = 0;
 /** Pontos ganhos ao apanhar um coletável */
 export const COLLECTIBLE_SCORE = 10;
 
@@ -643,7 +643,7 @@ export const POWERUP_SIZE = 25;
 /** Intervalo entre spawns de power-ups (ms) */
 export const POWERUP_SPAWN_INTERVAL_MS = 5000;
 /** Número máximo de power-ups no mapa ao mesmo tempo */
-export const POWERUP_MAX_COUNT = 6;
+export const POWERUP_MAX_COUNT = 0;
 
 /** Duração do Speed Boost (ms) */
 export const POWERUP_SPEED_DURATION_MS = 20000;
