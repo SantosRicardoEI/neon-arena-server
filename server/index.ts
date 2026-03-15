@@ -239,7 +239,6 @@ wss.on('connection', (ws) => {
       });
 
       broadcastWorldItemsState(room);
-      broadcastSnapshot(room, Date.now());
       return;
     }
 
