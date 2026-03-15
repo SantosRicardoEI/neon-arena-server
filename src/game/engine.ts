@@ -1,5 +1,5 @@
 import { GameState, InputState, Player, PlayerSkin, NetworkPlayerState, NetworkGameState, ChatMessage, ChatMessageType, SimulationEvents } from './types';
-import { createPlayer, createEnemy, createCollectible, createProjectile, createPowerUpItem, createBoss, updateGameState, playerHasPowerUp, applyPlayerMovement, initiateDash, computeMovementVelocity } from './simulation';
+import { createPlayer, createEnemy, createCollectible, createProjectile, createPowerUpItem, createBoss, updateGameState, playerHasPowerUp, applyPlayerMovement, initiateDash, computeMovementVelocity,spawnDeathParticles, } from './simulation';
 import { render } from './renderer';
 import { MultiplayerManager } from './multiplayer';
 import { playShoot, playEnemyDeath, playCollect, playDamage, playGameOver, playDash, playHealthPickup, playReloadComplete, playDroppedPointsPickup, playChatNotification, playPowerUpPickup, playBossShockwave } from './audio';
@@ -409,9 +409,31 @@ export class GameEngine {
   }
 
   private handleAuthoritativeGameEvents(events: SimulationEvents) {
-  if (events.enemiesKilled.length > 0) {
-    playEnemyDeath();
-  }
+    if (events.enemiesKilled.length > 0) {
+      playEnemyDeath();
+
+      const localNow = performance.now();
+
+      for (const kill of events.enemiesKilled) {
+        if (kill.kind === 'enemy') {
+          spawnDeathParticles(
+            this.state,
+            { x: kill.x, y: kill.y },
+            kill.type as any,
+            localNow
+          );
+        } else if (kill.kind === 'boss') {
+          // efeito próprio para boss
+          this.state.explosions.push({
+            pos: { x: kill.x, y: kill.y },
+            radius: 120,
+            createdAt: localNow,
+          });
+
+          // se quiseres, também podes criar várias explosões ou partículas especiais
+        }
+      }
+    }
 
   if (events.collectiblesGathered.length > 0) {
     playCollect();

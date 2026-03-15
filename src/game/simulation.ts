@@ -731,7 +731,13 @@ export function updateAuthoritative(
         if (enemy.health <= 0) {
           spawnDeathParticles(state, enemy.pos, enemy.type, now);
           state.enemies.splice(i, 1);
-          events.enemiesKilled.push(enemy.id);
+            events.enemiesKilled.push({
+              id: enemy.id,
+              kind: 'enemy',
+              type: enemy.type,
+              x: enemy.pos.x,
+              y: enemy.pos.y,
+            });
           const owner = state.players.get(proj.ownerId);
           if (owner) owner.score += cfg.killScore;
 
@@ -784,8 +790,15 @@ export function updateAuthoritative(
               timestamp: now,
             });
           }
+          events.enemiesKilled.push({
+            id: boss.id,
+            kind: 'boss',
+            type: boss.definitionId,
+            x: boss.pos.x,
+            y: boss.pos.y,
+          });
+
           state.bosses.splice(i, 1);
-          events.enemiesKilled.push(boss.id);
         }
         hitBoss = true;
         break;

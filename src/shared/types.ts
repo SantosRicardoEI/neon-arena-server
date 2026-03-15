@@ -263,7 +263,12 @@ export interface NetworkGameState {
  * Used by both client (for SFX/UI) and future server (for broadcasting).
  */
 export interface SimulationEvents {
-  enemiesKilled: string[];
+  enemiesKilled: {
+    id: string;
+    type: EnemyType | string;
+    x: number;
+    y: number;
+  }[];
   collectiblesGathered: string[];
   playersHit: { playerId: string; damage: number }[];
   droppedPointsGathered: { id: string; pickerId: string; pickerName: string; value: number }[];
