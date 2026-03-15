@@ -9,7 +9,7 @@ import http from "http";
 const PORT = Number(process.env.PORT) || 3001;
 const TICK_RATE = 60;
 const TICK_MS = 1000 / TICK_RATE;
-const SNAPSHOT_RATE = 20;
+const SNAPSHOT_RATE = 30;
 const SNAPSHOT_MS = 1000 / SNAPSHOT_RATE;
 let tickCount = 0;
 
@@ -64,11 +64,19 @@ function buildRoomList() {
 }
 
 function broadcastSnapshot(room: Room, now: number) {
+
   const snapshot = {
     type: 'server:snapshot' as const,
     state: buildNetworkGameState(room.state, ++room.stateSeq, now),
     serverTime: now,
   };
+
+  const payload = JSON.stringify(snapshot);
+  const sizeKB = payload.length / 1024;
+
+  if (room.stateSeq % 100 === 0) {
+    console.log(`[server] snapshot size: ${sizeKB.toFixed(2)} KB`);
+  }
 
   if (room.stateSeq % 600 === 0) {
     console.log(
@@ -78,7 +86,9 @@ function broadcastSnapshot(room: Room, now: number) {
   }
 
   for (const [, client] of room.clients) {
-    safeSend(client.ws, snapshot);
+    if (client.ws.readyState === WebSocket.OPEN) {
+      client.ws.send(payload);
+    }
   }
 }
 
