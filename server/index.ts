@@ -119,16 +119,17 @@ function broadcastSnapshot(room: Room, now: number) {
       players: JSON.stringify(state.players).length / 1024,
       enemies: JSON.stringify(state.enemies).length / 1024,
       projectiles: JSON.stringify(state.projectiles).length / 1024,
-      collectibles: JSON.stringify(state.collectibles).length / 1024,
     });
   }
 
+  /*
   if (room.stateSeq % 600 === 0) {
     console.log(
       `[server] snapshot players JSON (${room.id}) =`,
       JSON.stringify(snapshot.state.players, null, 2)
     );
   }
+  */
 
   for (const [, client] of room.clients) {
     if (client.ws.readyState === WebSocket.OPEN) {

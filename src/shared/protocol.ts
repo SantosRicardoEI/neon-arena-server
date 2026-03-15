@@ -36,22 +36,9 @@ export function buildNetworkGameState(state: GameState, seq: number, now: number
       color: b.color, glowColor: b.glowColor, targetPlayerId: b.targetPlayerId,
       lastShockwave: b.lastShockwave,
     })),
-    collectibles: state.collectibles.map(c => ({
-      id: c.id, x: c.pos.x, y: c.pos.y, pulsePhase: c.pulsePhase,
-    })),
     projectiles: state.projectiles.map(p => ({
       id: p.id, x: p.pos.x, y: p.pos.y, vx: p.vel.x, vy: p.vel.y,
       ownerId: p.ownerId, createdAt: p.createdAt,
-    })),
-    droppedPoints: state.droppedPoints.map(dp => ({
-      id: dp.id, x: dp.pos.x, y: dp.pos.y, value: dp.value,
-      pulsePhase: dp.pulsePhase, createdAt: dp.createdAt,
-    })),
-    healthPickups: state.healthPickups.map(hp => ({
-      id: hp.id, x: hp.pos.x, y: hp.pos.y, pulsePhase: hp.pulsePhase,
-    })),
-    powerUpItems: state.powerUpItems.map(pu => ({
-      id: pu.id, type: pu.type, x: pu.pos.x, y: pu.pos.y, pulsePhase: pu.pulsePhase,
     })),
     explosions: state.explosions.map(e => ({
       x: e.pos.x, y: e.pos.y, radius: e.radius, createdAt: e.createdAt,

@@ -494,10 +494,6 @@ export class GameEngine {
 
     this.state.enemies = nextEnemies;
 
-    this.state.collectibles = gs.collectibles.map(c => ({
-      id: c.id, pos: { x: c.x, y: c.y }, pulsePhase: c.pulsePhase,
-    }));
-
     const mergedProjectiles = gs.projectiles.map(np => {
       const existing = existingProjectiles.get(np.id);
       const trail = existing ? [...existing.trail] : [];
@@ -516,19 +512,6 @@ export class GameEngine {
     });
 
     this.state.projectiles = mergedProjectiles;
-
-    this.state.droppedPoints = (gs.droppedPoints || []).map(dp => ({
-      id: dp.id, pos: { x: dp.x, y: dp.y }, value: dp.value,
-      pulsePhase: dp.pulsePhase, createdAt: dp.createdAt,
-    }));
-
-    this.state.healthPickups = (gs.healthPickups || []).map(hp => ({
-      id: hp.id, pos: { x: hp.x, y: hp.y }, pulsePhase: hp.pulsePhase,
-    }));
-
-    this.state.powerUpItems = (gs.powerUpItems || []).map(pu => ({
-      id: pu.id, type: pu.type as any, pos: { x: pu.x, y: pu.y }, pulsePhase: pu.pulsePhase,
-    }));
 
     if (gs.explosions) {
       const localNow = performance.now();

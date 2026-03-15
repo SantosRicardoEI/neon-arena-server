@@ -219,11 +219,7 @@ export interface NetworkGameState {
   seq: number;
   enemies: { id: string; type: string; x: number; y: number; vx: number; vy: number; health: number; maxHealth: number; state: string; targetPlayerId: string | null; stateChangeTime: number }[];
   bosses: { id: string; definitionId: string; name: string; x: number; y: number; vx: number; vy: number; health: number; maxHealth: number; size: number; speed: number; damage: number; detectRange: number; killScore: number; color: string; glowColor: string; targetPlayerId: string | null; lastShockwave: number }[];
-  collectibles: { id: string; x: number; y: number; pulsePhase: number }[];
   projectiles: { id: string; x: number; y: number; vx: number; vy: number; ownerId: string; createdAt: number }[];
-  droppedPoints: { id: string; x: number; y: number; value: number; pulsePhase: number; createdAt: number }[];
-  healthPickups: { id: string; x: number; y: number; pulsePhase: number }[];
-  powerUpItems: { id: string; type: string; x: number; y: number; pulsePhase: number }[];
   explosions: { x: number; y: number; radius: number; createdAt: number }[];
   players: {
     [id: string]: {
