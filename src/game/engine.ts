@@ -572,9 +572,26 @@ export class GameEngine {
       p.skin = data.skin || p.skin;
 
       // Para já: aplicar posição autoritária diretamente
-      p.pos.x = data.x;
-      p.pos.y = data.y;
-      p.aimAngle = data.aimAngle;
+      if (pid === this.localPlayerId) {
+        const dx = data.x - p.pos.x;
+        const dy = data.y - p.pos.y;
+        const distSq = dx * dx + dy * dy;
+
+        if (distSq > 400) {
+          p.pos.x = data.x;
+          p.pos.y = data.y;
+        } else {
+          p.pos.x += dx * 0.1;
+          p.pos.y += dy * 0.1;
+        }
+
+        p.aimAngle = data.aimAngle;
+
+      } else {
+        p.pos.x = data.x;
+        p.pos.y = data.y;
+        p.aimAngle = data.aimAngle;
+      }
 
       p.health = data.health;
       p.score = data.score;
