@@ -198,6 +198,15 @@ wss.on('connection', (ws) => {
     const message = JSON.parse(raw.toString()) as ClientMessage;
     const client = clients.get(clientId);
 
+    if ((message as any).type === 'client:ping') {
+      safeSend(ws, {
+        type: 'server:pong',
+        t: (message as any).t,
+        serverTime: Date.now(),
+      });
+      return;
+    }
+
     if (!client) return;
 
     if (message.type === 'client:list_rooms') {
@@ -337,4 +346,3 @@ setInterval(() => {
   }
 }, SNAPSHOT_MS);
 
-console.log(`[server] listening on port ${PORT}`);

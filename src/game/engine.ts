@@ -15,6 +15,7 @@ import { predictMovement } from '../client/prediction/movement-prediction';
 import { predictDash } from '../client/prediction/dash-prediction';
 import { interpolateRemotePlayer, setRemotePlayerTarget } from '../client/prediction/interpolation';
 import { GameSocket } from '../client/network/game-socket';
+
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL || "ws://localhost:3001";
 
@@ -44,6 +45,7 @@ export class GameEngine {
   private gameMode: "solo" | "online";
   private inputBuffer = new InputBuffer();
   private socket: GameSocket | null = null;
+  private pingIntervalId: number | null = null;
 
   constructor(
   canvas: HTMLCanvasElement,
@@ -74,6 +76,12 @@ export class GameEngine {
     console.log("[engine] creating GameSocket");
 
     this.socket = new GameSocket();
+    this.pingIntervalId = window.setInterval(() => {
+      this.socket?.send({
+        type: "client:ping",
+        t: Date.now(),
+      } as any);
+    }, 2000);
 
     this.socket.connect(SERVER_URL, () => {
       this.socket?.send({
@@ -86,7 +94,12 @@ export class GameEngine {
     });
 
     this.socket.onMessage((msg) => {
-      console.log("[engine] socket message", msg);
+      // console.log("[engine] socket message", msg);
+
+      if ((msg as any).type === "server:pong") {
+        const ping = Date.now() - (msg as any).t;
+        console.log("[net] ping =", ping, "ms");
+      }
 
       if (msg.type === "server:room_state") {
         this.localPlayerId = msg.yourPlayerId;
@@ -128,15 +141,16 @@ export class GameEngine {
       }
 
       if (msg.type === "server:snapshot") {
-        console.log("[engine] snapshot players =", msg.state.players);
-        if (msg.type === "server:snapshot") {
+        // console.log("[engine] snapshot players =", msg.state.players);
+        
+        /*
         console.log(
           "[engine] snapshot local player raw =",
           this.localPlayerId,
           msg.state.players[this.localPlayerId]
         );
-        this.handleGameStateReceived(msg.state);
-      }
+        */
+
         this.handleGameStateReceived(msg.state);
       }
     });
@@ -159,6 +173,10 @@ export class GameEngine {
 
   stop() {
     if (!this.running) return;
+    if (this.pingIntervalId !== null) {
+      window.clearInterval(this.pingIntervalId);
+      this.pingIntervalId = null;
+    }
 
     console.log("[engine] stop");
     this.running = false;
