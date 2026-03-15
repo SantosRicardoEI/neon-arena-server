@@ -7,7 +7,7 @@ import type { ClientMessage } from '../src/shared/protocol/messages';
 import http from "http";
 
 const PORT = Number(process.env.PORT) || 3001;
-const TICK_RATE = 60;
+const TICK_RATE = 15;
 const TICK_MS = 1000 / TICK_RATE;
 let tickCount = 0;
 
