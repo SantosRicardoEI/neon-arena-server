@@ -267,6 +267,7 @@ export class GameEngine {
     // Cleanup expired visual entities
     cleanupExpiredEntities(this.state, timestamp);
 
+    /*
     console.log(
       "[engine] local state players before render =",
       Array.from(this.state.players.entries()).map(([id, p]) => ({
@@ -277,6 +278,7 @@ export class GameEngine {
         health: p.health,
       }))
     );
+    */
     render(this.ctx, this.state, this.localPlayerId, this.canvas.width, this.canvas.height, timestamp, this.chatting, this.chatInput);
 
     /*
