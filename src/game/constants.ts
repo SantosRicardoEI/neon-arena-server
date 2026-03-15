@@ -209,7 +209,7 @@ export const ENEMY_SPAWN_BATCH_BASE = 2;
 /** Inimigos extra por jogador adicional na sala */
 export const ENEMY_SPAWN_BATCH_PER_PLAYER = 1;
 /** Número máximo de inimigos no mapa ao mesmo tempo */
-export const ENEMY_MAX_COUNT = 0;
+export const ENEMY_MAX_COUNT = 100;
 
 // --- Legacy aliases (used by old code) ---
 /** @deprecated Use ENEMY_NORMAL_SIZE */
@@ -224,7 +224,7 @@ export const ENEMY_DAMAGE = ENEMY_NORMAL_DAMAGE;
 /** Tamanho visual dos coletáveis de pontos (px) */
 export const COLLECTIBLE_SIZE = 16;
 /** Número inicial de coletáveis no mapa */
-export const INITIAL_COLLECTIBLES = 0;
+export const INITIAL_COLLECTIBLES = 100;
 /** Pontos ganhos ao apanhar um coletável */
 export const COLLECTIBLE_SCORE = 10;
 
@@ -291,7 +291,7 @@ export const KILL_SCORE = 200;
 /** Pontos ganhos ao matar um inimigo NPC */
 export const ENEMY_KILL_SCORE = 50;
 /** Número inicial de inimigos no mapa */
-export const INITIAL_ENEMIES = 0;
+export const INITIAL_ENEMIES = 30;
 
 // =============================================
 // BOSSES
@@ -643,7 +643,7 @@ export const POWERUP_SIZE = 25;
 /** Intervalo entre spawns de power-ups (ms) */
 export const POWERUP_SPAWN_INTERVAL_MS = 5000;
 /** Número máximo de power-ups no mapa ao mesmo tempo */
-export const POWERUP_MAX_COUNT = 0;
+export const POWERUP_MAX_COUNT = 6;
 
 /** Duração do Speed Boost (ms) */
 export const POWERUP_SPEED_DURATION_MS = 20000;

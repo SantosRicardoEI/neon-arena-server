@@ -48,6 +48,30 @@ const Index = () => {
   const [selectedSkin, setSelectedSkin] = useState<PlayerSkin>("circle");
   const [tabId] = useState(getOrCreateTabId);
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
+  type NoticeLevel = "info" | "warning" | "critical";
+
+  type Notice = {
+    level: NoticeLevel;
+    text: string;
+  };
+
+  const notices: Notice[] = [
+    {
+      level: "warning",
+      text: "Multiplayer is experimental and may be unstable or laggy.",
+    },
+  ];
+
+  function getNoticeIcon(level: NoticeLevel) {
+  switch (level) {
+    case "critical":
+      return "🔺"; // vermelho
+    case "warning":
+      return "⚠"; // amarelo
+    default:
+      return "•"; // normal
+  }
+}
 
   const activeCounts = useSitePresence({
     tabId,
@@ -160,6 +184,35 @@ const handleLobbyClick = useCallback(() => {
         <p className="text-muted-foreground text-sm max-w-md mx-auto">
           WASD and SPACE to move · Mouse to aim & shoot · Survive the arena
         </p>
+
+        {notices.length > 0 && (
+          <div className="max-w-md mx-auto bg-card/70 border border-border rounded-sm px-4 py-3 space-y-2 backdrop-blur-sm">
+            <div className="text-primary text-[10px] font-tabular tracking-widest uppercase">
+              Development Updates
+            </div>
+
+            {notices.map((notice, index) => (
+              <p
+    key={index}
+    className="text-foreground text-xs font-tabular text-left leading-relaxed flex gap-2 items-start"
+  >
+    <span
+      className={
+        notice.level === "critical"
+          ? "text-red-400"
+          : notice.level === "warning"
+          ? "text-yellow-400"
+          : "text-muted-foreground"
+      }
+    >
+      {getNoticeIcon(notice.level)}
+    </span>
+
+    <span>{notice.text}</span>
+              </p>
+            ))}
+          </div>
+        )}
 
         {/* Online players indicator */}
         <div className="flex items-center justify-center">
