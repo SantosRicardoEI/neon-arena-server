@@ -230,7 +230,7 @@ export class GameEngine {
         this.addSystemEvent('event_points', `${pu.pickerName} picked up ${label}`);
       }
     }
-    if (events.reloadCompletedPlayerIds.includes(this.localPlayerId)) {
+    if ((events.reloadCompletedPlayerIds ?? []).includes(this.localPlayerId)) {
       console.log('[SFX] reloadComplete');
       playReloadComplete();
     }
@@ -411,7 +411,7 @@ export class GameEngine {
     }
   }
 
-  if (events.reloadCompletedPlayerIds.includes(this.localPlayerId)) {
+  if ((events.reloadCompletedPlayerIds ?? []).includes(this.localPlayerId)) {
     playReloadComplete();
   }
 
