@@ -153,7 +153,7 @@ const handleLobbyClick = useCallback(() => {
             NEON ARENA
           </h1>
           <span className="text-[10px] px-2 py-1 border border-primary text-primary font-tabular tracking-widest uppercase">
-            easter egg...
+            BETA
           </span>
         </div>
 
