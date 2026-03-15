@@ -209,7 +209,7 @@ export const ENEMY_SPAWN_BATCH_BASE = 2;
 /** Inimigos extra por jogador adicional na sala */
 export const ENEMY_SPAWN_BATCH_PER_PLAYER = 1;
 /** Número máximo de inimigos no mapa ao mesmo tempo */
-export const ENEMY_MAX_COUNT = 100;
+export const ENEMY_MAX_COUNT = 0;
 
 // --- Legacy aliases (used by old code) ---
 /** @deprecated Use ENEMY_NORMAL_SIZE */
@@ -291,7 +291,7 @@ export const KILL_SCORE = 200;
 /** Pontos ganhos ao matar um inimigo NPC */
 export const ENEMY_KILL_SCORE = 50;
 /** Número inicial de inimigos no mapa */
-export const INITIAL_ENEMIES = 30;
+export const INITIAL_ENEMIES = 0;
 
 // =============================================
 // BOSSES
