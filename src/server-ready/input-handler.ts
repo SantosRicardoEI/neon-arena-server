@@ -77,6 +77,7 @@ function handleInput(
     player.vel.x = vel.x;
     player.vel.y = vel.y;
     player.aimAngle = msg.aimAngle;
+    player.lastProcessedInputSeq = msg.seq;
     return true;
 }
 

@@ -119,6 +119,7 @@ export function createPlayer(id: string, name: string, color: string, skin: Play
     targetPos: null,
     targetAimAngle: null,
     lastNetworkUpdate: 0,
+    lastProcessedInputSeq: -1,
   };
 }
 

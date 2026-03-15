@@ -571,42 +571,36 @@ export class GameEngine {
       p.color = data.color || p.color;
       p.skin = data.skin || p.skin;
 
-      // Para já: aplicar posição autoritária diretamente
-        if (pid === this.localPlayerId) {
-          const dx = data.x - p.pos.x;
-          const dy = data.y - p.pos.y;
-          const distSq = dx * dx + dy * dy;
+      if (pid === this.localPlayerId) {
+        // 1. corrigir para estado autoritário do servidor
+        p.pos.x = data.x;
+        p.pos.y = data.y;
+        p.aimAngle = data.aimAngle;
 
-          // erro grande = snap
-          if (distSq > 2500) {
-            p.pos.x = data.x;
-            p.pos.y = data.y;
-          }
-          // erro médio = correção mais forte
-          else if (distSq > 100) {
-            p.pos.x += dx * 0.35;
-            p.pos.y += dy * 0.35;
-          }
-          // erro pequeno = não mexer
-          // deixa a prediction local seguir
-          p.aimAngle = data.aimAngle;
+        // 2. descartar inputs já processados pelo servidor
+        this.inputBuffer.discardUpTo(data.lastProcessedInputSeq);
 
-        } else {
-          p.pos.x = data.x;
-          p.pos.y = data.y;
-          p.aimAngle = data.aimAngle;
+        // 3. reaplicar inputs pendentes
+        const pendingInputs = this.inputBuffer.getAfter(data.lastProcessedInputSeq);
+        for (const input of pendingInputs) {
+          predictMovement(p, input.moveDir, 1 / 60, input.time);
+          p.aimAngle = input.aimAngle;
         }
+      } else {
+        p.pos.x = data.x;
+        p.pos.y = data.y;
+        p.aimAngle = data.aimAngle;
+      }
 
       p.health = data.health;
       p.score = data.score;
       p.ammo = data.ammo;
-      const remainingReloadMs = Math.max(0, data.reloadingUntil - Date.now());
       if (data.reloadingUntil > 0) {
         const remainingReloadMs = Math.max(0, data.reloadingUntil - Date.now());
         p.reloadingUntil = performance.now() + remainingReloadMs;
-} else {
-  p.reloadingUntil = 0;
-}
+      } else {
+        p.reloadingUntil = 0;
+      }
       p.activePowerUps = (data.activePowerUps || []).map(pu => ({
         type: pu.type as any,
         expiresAt: pu.expiresAt

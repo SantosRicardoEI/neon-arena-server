@@ -51,6 +51,7 @@ export interface Player {
   targetPos: Vec2 | null;
   targetAimAngle: number | null;
   lastNetworkUpdate: number;
+  lastProcessedInputSeq: number;
 }
 
 export type EnemyType = 'normal' | 'fast' | 'tank' | 'exploder';
@@ -245,6 +246,7 @@ export interface NetworkGameState {
       skin: PlayerSkin;
       ammo: number;
       reloadingUntil: number;
+      lastProcessedInputSeq: number;
       activePowerUps: { type: string; expiresAt: number }[];
     };
   };

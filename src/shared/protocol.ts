@@ -86,10 +86,12 @@ export function buildNetworkGameState(state: GameState, seq: number, now: number
       skin: p.skin,
       ammo: p.ammo,
       reloadingUntil: p.reloadingUntil,
+      lastProcessedInputSeq: p.lastProcessedInputSeq,
       activePowerUps: p.activePowerUps.map(pu => ({
         type: pu.type,
         expiresAt: pu.expiresAt,
       })),
+      
     };
   }
 
