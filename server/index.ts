@@ -4,6 +4,7 @@ import { stepAuthoritative } from '../src/server-ready/simulation-step';
 import { applyClientMessage } from '../src/server-ready/input-handler';
 import { buildNetworkGameState } from '../src/shared/protocol';
 import type { ClientMessage } from '../src/shared/protocol/messages';
+import http from "http";
 
 const PORT = Number(process.env.PORT) || 3001;
 const TICK_RATE = 60;
@@ -103,7 +104,22 @@ function broadcastGameEvents(room: Room, events: import('../src/shared/types').S
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+const server = http.createServer((req, res) => {
+  if (req.url === "/health") {
+    res.writeHead(200);
+    res.end("ok");
+    return;
+  }
+
+  res.writeHead(200);
+  res.end("running");
+});
+
+const wss = new WebSocketServer({ server });
+
+server.listen(PORT, () => {
+  console.log(`[server] listening on port ${PORT}`);
+});
 
 wss.on('connection', (ws) => {
   const clientId = makeClientId();
