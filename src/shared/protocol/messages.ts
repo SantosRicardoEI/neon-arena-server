@@ -193,6 +193,37 @@ export interface ServerRoomStateMessage {
   yourPlayerId: string;
 }
 
+export interface ServerWorldItemsStateMessage {
+  type: 'server:world_items_state';
+  collectibles: {
+    id: string;
+    x: number;
+    y: number;
+    pulsePhase: number;
+  }[];
+  droppedPoints: {
+    id: string;
+    x: number;
+    y: number;
+    value: number;
+    pulsePhase: number;
+    createdAt: number;
+  }[];
+  healthPickups: {
+    id: string;
+    x: number;
+    y: number;
+    pulsePhase: number;
+  }[];
+  powerUpItems: {
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    pulsePhase: number;
+  }[];
+}
+
 /** Chat message broadcast */
 export interface ServerChatMessage {
   type: 'server:chat';
@@ -252,7 +283,8 @@ export type ServerMessage =
   | ServerBossEventMessage
   | ServerKillEventMessage
   | ServerPauseMessage
-  | ServerRoomListMessage;
+  | ServerRoomListMessage
+  | ServerWorldItemsStateMessage;
 
 // ─── Envelope ────────────────────────────────────────────────────────
 
@@ -261,4 +293,6 @@ export interface NetworkEnvelope<T extends ClientMessage | ServerMessage = Clien
   senderId: string;
   message: T;
 }
+
+
 

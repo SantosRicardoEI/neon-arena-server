@@ -98,6 +98,35 @@ export class GameEngine {
         this.handleAuthoritativeGameEvents(msg.events);
       }
 
+      if (msg.type === "server:world_items_state") {
+        this.state.collectibles = msg.collectibles.map(c => ({
+          id: c.id,
+          pos: { x: c.x, y: c.y },
+          pulsePhase: c.pulsePhase,
+        }));
+
+        this.state.droppedPoints = msg.droppedPoints.map(dp => ({
+          id: dp.id,
+          pos: { x: dp.x, y: dp.y },
+          value: dp.value,
+          pulsePhase: dp.pulsePhase,
+          createdAt: dp.createdAt,
+        }));
+
+        this.state.healthPickups = msg.healthPickups.map(hp => ({
+          id: hp.id,
+          pos: { x: hp.x, y: hp.y },
+          pulsePhase: hp.pulsePhase,
+        }));
+
+        this.state.powerUpItems = msg.powerUpItems.map(pu => ({
+          id: pu.id,
+          type: pu.type as any,
+          pos: { x: pu.x, y: pu.y },
+          pulsePhase: pu.pulsePhase,
+        }));
+      }
+
       if (msg.type === "server:snapshot") {
         console.log("[engine] snapshot players =", msg.state.players);
         if (msg.type === "server:snapshot") {

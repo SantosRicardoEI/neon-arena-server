@@ -63,6 +63,43 @@ function buildRoomList() {
   }));
 }
 
+function broadcastWorldItemsState(room: Room) {
+  const message = {
+    type: 'server:world_items_state' as const,
+    collectibles: room.state.collectibles.map(c => ({
+      id: c.id,
+      x: c.pos.x,
+      y: c.pos.y,
+      pulsePhase: c.pulsePhase,
+    })),
+    droppedPoints: room.state.droppedPoints.map(dp => ({
+      id: dp.id,
+      x: dp.pos.x,
+      y: dp.pos.y,
+      value: dp.value,
+      pulsePhase: dp.pulsePhase,
+      createdAt: dp.createdAt,
+    })),
+    healthPickups: room.state.healthPickups.map(hp => ({
+      id: hp.id,
+      x: hp.pos.x,
+      y: hp.pos.y,
+      pulsePhase: hp.pulsePhase,
+    })),
+    powerUpItems: room.state.powerUpItems.map(pu => ({
+      id: pu.id,
+      type: pu.type,
+      x: pu.pos.x,
+      y: pu.pos.y,
+      pulsePhase: pu.pulsePhase,
+    })),
+  };
+
+  for (const [, client] of room.clients) {
+    safeSend(client.ws, message);
+  }
+}
+
 function broadcastSnapshot(room: Room, now: number) {
 
   const snapshot = {
@@ -191,6 +228,7 @@ wss.on('connection', (ws) => {
         yourPlayerId: clientId,
       });
 
+      broadcastWorldItemsState(room);
       broadcastSnapshot(room, Date.now());
       return;
     }
