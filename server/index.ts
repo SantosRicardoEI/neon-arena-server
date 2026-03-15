@@ -111,7 +111,7 @@ function broadcastSnapshot(room: Room, now: number) {
   const payload = JSON.stringify(snapshot);
   const sizeKB = payload.length / 1024;
 
-  if (room.stateSeq % 100 === 0) {
+  if (room.stateSeq % 400 === 0) {
     console.log(`[server] snapshot size: ${sizeKB.toFixed(2)} KB`);
     const state = snapshot.state;
 
@@ -210,6 +210,10 @@ wss.on('connection', (ws) => {
     if (!client) return;
 
     if (message.type === 'client:list_rooms') {
+        console.log('[server] list_rooms called', {
+        roomCount: rooms.size,
+        rooms: Array.from(rooms.keys()),
+      });
       safeSend(ws, {
         type: 'server:room_list',
         rooms: buildRoomList(),
@@ -220,6 +224,11 @@ wss.on('connection', (ws) => {
     // JOIN: define a sala do cliente e cria a room se necessário
     if (message.type === 'client:join') {
       const room = getOrCreateRoom(message.roomId);
+
+      console.log('[server] after join', {
+        roomCount: rooms.size,
+        rooms: Array.from(rooms.keys()),
+      });
 
       client.roomId = message.roomId;
       room.clients.set(clientId, client);
