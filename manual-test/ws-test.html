@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WS Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #111;
+      color: #eee;
+    }
+
+    button {
+      margin-right: 8px;
+      margin-bottom: 8px;
+      padding: 8px 12px;
+    }
+
+    pre {
+      background: #1e1e1e;
+      padding: 12px;
+      border: 1px solid #444;
+      max-height: 500px;
+      overflow: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Teste WebSocket local</h1>
+
+  <button id="connectBtn">Ligar</button>
+  <button id="joinBtn">Join</button>
+  <button id="moveBtn">Enviar input</button>
+
+  <div id="status">Desligado</div>
+  <pre id="log"></pre>
+
+  <script>
+  let ws = null;
+  let snapshotCount = 0;
+
+  const logEl = document.getElementById("log");
+  const statusEl = document.getElementById("status");
+
+  function log(...args) {
+    logEl.textContent += args.map(a =>
+      typeof a === "string" ? a : JSON.stringify(a, null, 2)
+    ).join(" ") + "\n\n";
+    logEl.scrollTop = logEl.scrollHeight;
+    console.log(...args);
+  }
+
+  document.getElementById("connectBtn").addEventListener("click", () => {
+    ws = new WebSocket("ws://127.0.0.1:3001");
+
+    ws.onopen = () => {
+      statusEl.textContent = "Ligado";
+      log("WebSocket ligado");
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+
+        if (msg.type === "server:snapshot") {
+          snapshotCount += 1;
+
+          const playerIds = msg.state?.players ? Object.keys(msg.state.players) : [];
+          const enemyCount = msg.state?.enemies?.length ?? 0;
+          const projectileCount = msg.state?.projectiles?.length ?? 0;
+
+          // só escreve um resumo, em vez do snapshot todo
+          statusEl.textContent =
+            `Ligado | snapshots: ${snapshotCount} | players: ${playerIds.length} | enemies: ${enemyCount} | projectiles: ${projectileCount}`;
+
+          // de 30 em 30 snapshots, escreve resumo no log
+          if (snapshotCount % 30 === 0) {
+            log("Resumo snapshot", {
+              snapshotCount,
+              playerIds,
+              enemyCount,
+              projectileCount
+            });
+          }
+
+          return;
+        }
+
+        log("Recebido:", msg);
+      } catch (err) {
+        log("Recebido raw:", event.data);
+      }
+    };
+
+    ws.onclose = () => {
+      statusEl.textContent = "Desligado";
+      log("WebSocket fechado");
+    };
+
+    ws.onerror = (err) => {
+      statusEl.textContent = "Erro";
+      log("Erro WebSocket:", err);
+    };
+  });
+
+  document.getElementById("joinBtn").addEventListener("click", () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      log("Ainda não está ligado");
+      return;
+    }
+
+    const msg = {
+      type: "client:join",
+      playerName: "Ricardo",
+      skin: "circle",
+      color: "#00ff88"
+    };
+
+    ws.send(JSON.stringify(msg));
+    log("Enviado join:", msg);
+  });
+
+  document.getElementById("moveBtn").addEventListener("click", () => {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      log("Ainda não está ligado");
+      return;
+    }
+
+    const msg = {
+      type: "client:input",
+      seq: 1,
+      moveDir: { x: 1, y: 0 },
+      aimAngle: 0,
+      clientTime: Date.now()
+    };
+
+    ws.send(JSON.stringify(msg));
+    log("Enviado input:", msg);
+  });
+</script>
+</body>
+</html>
