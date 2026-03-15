@@ -302,6 +302,18 @@ setInterval(() => {
   for (const [, room] of rooms) {
     const step = stepAuthoritative(room.state, 1 / TICK_RATE, now);
     broadcastGameEvents(room, step.simulation, now);
+
+    const sim = step.simulation;
+
+    const worldItemsChanged =
+      sim.collectiblesGathered.length > 0 ||
+      sim.droppedPointsGathered.length > 0 ||
+      sim.healthPickupsGathered.length > 0 ||
+      sim.powerUpsGathered.length > 0;
+
+    if (worldItemsChanged) {
+      broadcastWorldItemsState(room);
+    }
   }
 
   tickCount++;
