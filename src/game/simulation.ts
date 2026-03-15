@@ -366,7 +366,7 @@ export function updateCommon(
   localPlayer: Player,
   dt: number,
   now: number,
-): { reloadCompleted: boolean } {
+): { reloadCompletedPlayerIds: string[] } {
   applyPlayerMovement(localPlayer, dt, now, C.WORLD_WIDTH, C.WORLD_HEIGHT);
 
   let reloadCompleted = false;
@@ -392,7 +392,9 @@ export function updateCommon(
     p.activePowerUps = p.activePowerUps.filter(pu => now < pu.expiresAt);
   }
 
-  return { reloadCompleted };
+    return {
+    reloadCompletedPlayerIds: reloadCompleted ? [localPlayer.id] : [],
+  };
 }
 
 // =============================================
@@ -413,7 +415,7 @@ export function updateClientPrediction(
     droppedPointsGathered: [],
     healthPickupsGathered: [],
     powerUpsGathered: [],
-    reloadCompleted: false,
+    reloadCompletedPlayerIds: [],
     playerKills: [],
   };
 
@@ -528,7 +530,7 @@ export function updateAuthoritative(
     droppedPointsGathered: [],
     healthPickupsGathered: [],
     powerUpsGathered: [],
-    reloadCompleted: false,
+    reloadCompletedPlayerIds: [],
     playerKills: [],
   };
 
@@ -907,7 +909,7 @@ export function updateGameState(
     return {
       enemiesKilled: [], collectiblesGathered: [], playersHit: [],
       droppedPointsGathered: [], healthPickupsGathered: [], powerUpsGathered: [],
-      reloadCompleted: false, playerKills: [],
+      reloadCompletedPlayerIds: [], playerKills: [],
     };
   }
 
@@ -921,11 +923,11 @@ export function updateGameState(
       }
     }
     const events = updateAuthoritative(state, dt, now);
-    events.reloadCompleted = common.reloadCompleted;
+    events.reloadCompletedPlayerIds.push(...common.reloadCompletedPlayerIds);
     return events;
   } else {
     const events = updateClientPrediction(state, localPlayer, dt, now);
-    events.reloadCompleted = common.reloadCompleted;
+    events.reloadCompletedPlayerIds.push(...common.reloadCompletedPlayerIds);
     return events;
   }
 }

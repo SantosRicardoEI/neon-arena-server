@@ -551,7 +551,13 @@ export class GameEngine {
       p.health = data.health;
       p.score = data.score;
       p.ammo = data.ammo;
-      p.reloadingUntil = data.reloadingUntil;
+      const remainingReloadMs = Math.max(0, data.reloadingUntil - Date.now());
+      if (data.reloadingUntil > 0) {
+        const remainingReloadMs = Math.max(0, data.reloadingUntil - Date.now());
+        p.reloadingUntil = performance.now() + remainingReloadMs;
+} else {
+  p.reloadingUntil = 0;
+}
       p.activePowerUps = (data.activePowerUps || []).map(pu => ({
         type: pu.type as any,
         expiresAt: pu.expiresAt

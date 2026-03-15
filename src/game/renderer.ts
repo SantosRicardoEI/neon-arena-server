@@ -1326,7 +1326,7 @@ function drawHUD(ctx: CanvasRenderingContext2D, player: Player, w: number, h: nu
 
   
   const reloadTime = getReloadTime(player.score);
-  const currentTime = Date.now();
+  const currentTime = now;
   const isReloading = player.reloadingUntil > currentTime;
 
   if (isReloading) {
