@@ -15,6 +15,8 @@ import { predictMovement } from '../client/prediction/movement-prediction';
 import { predictDash } from '../client/prediction/dash-prediction';
 import { interpolateRemotePlayer, setRemotePlayerTarget } from '../client/prediction/interpolation';
 import { GameSocket } from '../client/network/game-socket';
+const SERVER_URL =
+  import.meta.env.VITE_SERVER_URL || "ws://localhost:3001";
 
 
 export class GameEngine {
@@ -73,7 +75,7 @@ export class GameEngine {
 
     this.socket = new GameSocket();
 
-    this.socket.connect("ws://localhost:3001", () => {
+    this.socket.connect(SERVER_URL, () => {
       this.socket?.send({
         type: "client:join",
         roomId,
