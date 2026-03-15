@@ -467,8 +467,6 @@ export class GameEngine {
         existing.health = e.health ?? 1;
         existing.maxHealth = e.maxHealth ?? 1;
         existing.state = e.state as 'passive' | 'aggressive';
-        existing.targetPlayerId = e.targetPlayerId;
-        existing.stateChangeTime = e.stateChangeTime;
 
         // suavizar posição em vez de dar snap direto
         existing.targetPos = { x: e.x, y: e.y };
@@ -485,8 +483,8 @@ export class GameEngine {
         health: e.health ?? 1,
         maxHealth: e.maxHealth ?? 1,
         state: e.state as 'passive' | 'aggressive',
-        targetPlayerId: e.targetPlayerId,
-        stateChangeTime: e.stateChangeTime,
+        targetPlayerId: null,
+        stateChangeTime: 0,
         targetPos: { x: e.x, y: e.y },
         lastNetworkUpdate: performance.now(),
       };

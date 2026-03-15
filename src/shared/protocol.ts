@@ -19,14 +19,24 @@ import {
   ActivePowerUp,
 } from './types';
 
+function q(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
 /** Build a NetworkGameState snapshot from the authoritative GameState */
 export function buildNetworkGameState(state: GameState, seq: number, now: number): NetworkGameState {
   const gs: NetworkGameState = {
     seq,
     enemies: state.enemies.map(e => ({
-      id: e.id, type: e.type, x: e.pos.x, y: e.pos.y, vx: e.vel.x, vy: e.vel.y,
-      health: e.health, maxHealth: e.maxHealth,
-      state: e.state, targetPlayerId: e.targetPlayerId, stateChangeTime: e.stateChangeTime,
+      id: e.id,
+      type: e.type,
+      x: q(e.pos.x),
+      y: q(e.pos.y),
+      vx: q(e.vel.x),
+      vy: q(e.vel.y),
+      health: e.health,
+      maxHealth: e.maxHealth,
+      state: e.state,
     })),
     bosses: state.bosses.map(b => ({
       id: b.id, definitionId: b.definitionId, name: b.name,
@@ -37,8 +47,13 @@ export function buildNetworkGameState(state: GameState, seq: number, now: number
       lastShockwave: b.lastShockwave,
     })),
     projectiles: state.projectiles.map(p => ({
-      id: p.id, x: p.pos.x, y: p.pos.y, vx: p.vel.x, vy: p.vel.y,
-      ownerId: p.ownerId, createdAt: p.createdAt,
+      id: p.id,
+      x: q(p.pos.x),
+      y: q(p.pos.y),
+      vx: q(p.vel.x),
+      vy: q(p.vel.y),
+      ownerId: p.ownerId,
+      createdAt: p.createdAt,
     })),
     explosions: state.explosions.map(e => ({
       x: e.pos.x, y: e.pos.y, radius: e.radius, createdAt: e.createdAt,

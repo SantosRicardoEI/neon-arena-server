@@ -217,7 +217,17 @@ export interface NetworkMessage {
 
 export interface NetworkGameState {
   seq: number;
-  enemies: { id: string; type: string; x: number; y: number; vx: number; vy: number; health: number; maxHealth: number; state: string; targetPlayerId: string | null; stateChangeTime: number }[];
+  enemies: {
+    id: string;
+    type: string;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    health: number;
+    maxHealth: number;
+    state: string;
+  }[];  
   bosses: { id: string; definitionId: string; name: string; x: number; y: number; vx: number; vy: number; health: number; maxHealth: number; size: number; speed: number; damage: number; detectRange: number; killScore: number; color: string; glowColor: string; targetPlayerId: string | null; lastShockwave: number }[];
   projectiles: { id: string; x: number; y: number; vx: number; vy: number; ownerId: string; createdAt: number }[];
   explosions: { x: number; y: number; radius: number; createdAt: number }[];
