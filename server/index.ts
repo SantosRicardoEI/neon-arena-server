@@ -76,6 +76,14 @@ function broadcastSnapshot(room: Room, now: number) {
 
   if (room.stateSeq % 100 === 0) {
     console.log(`[server] snapshot size: ${sizeKB.toFixed(2)} KB`);
+    const state = snapshot.state;
+
+    console.log("sizes", {
+      players: JSON.stringify(state.players).length / 1024,
+      enemies: JSON.stringify(state.enemies).length / 1024,
+      projectiles: JSON.stringify(state.projectiles).length / 1024,
+      collectibles: JSON.stringify(state.collectibles).length / 1024,
+    });
   }
 
   if (room.stateSeq % 600 === 0) {
