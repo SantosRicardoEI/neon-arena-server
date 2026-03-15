@@ -7,8 +7,10 @@ import type { ClientMessage } from '../src/shared/protocol/messages';
 import http from "http";
 
 const PORT = Number(process.env.PORT) || 3001;
-const TICK_RATE = 15;
+const TICK_RATE = 60;
 const TICK_MS = 1000 / TICK_RATE;
+const SNAPSHOT_RATE = 20;
+const SNAPSHOT_MS = 1000 / SNAPSHOT_RATE;
 let tickCount = 0;
 
 type ClientConnection = {
@@ -245,7 +247,6 @@ setInterval(() => {
   for (const [, room] of rooms) {
     const step = stepAuthoritative(room.state, 1 / TICK_RATE, now);
     broadcastGameEvents(room, step.simulation, now);
-    broadcastSnapshot(room, now);
   }
 
   tickCount++;
@@ -260,5 +261,13 @@ setInterval(() => {
     }
   }
 }, TICK_MS);
+
+setInterval(() => {
+  const now = Date.now();
+
+  for (const [, room] of rooms) {
+    broadcastSnapshot(room, now);
+  }
+}, SNAPSHOT_MS);
 
 console.log(`[server] listening on port ${PORT}`);
