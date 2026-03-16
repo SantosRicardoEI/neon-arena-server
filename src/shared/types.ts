@@ -265,6 +265,7 @@ export interface NetworkGameState {
 export interface SimulationEvents {
   enemiesKilled: {
     id: string;
+    kind: "enemy" | "boss";
     type: EnemyType | string;
     x: number;
     y: number;
