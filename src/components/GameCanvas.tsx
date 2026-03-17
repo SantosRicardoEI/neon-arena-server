@@ -28,7 +28,7 @@ const GameCanvas = ({
   const engineRef = useRef<GameEngine | null>(null);
 
   const [devSelectedCategory, setDevSelectedCategory] = useState<DevSpawnCategory>('enemy');
-  const [devSelectedOptionId, setDevSelectedOptionId] = useState<DevSpawnOptionId | null>('normal');
+  const [devSelectedOptionId, setDevSelectedOptionId] = useState<DevSpawnOptionId | null>(null);
 
     const handleSelectCategory = (category: DevSpawnCategory) => {
     setDevSelectedCategory(category);
