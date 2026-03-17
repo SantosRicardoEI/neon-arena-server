@@ -92,7 +92,9 @@ const Index = () => {
     const trimmedName = playerName.trim() || "Player";
     setPlayerName(trimmedName);
     setScreen("lobby");
-  }, [playerName]);
+    audit.updatePlayer(trimmedName, selectedColor, selectedSkin);
+    audit.logEvent("lobby_enter");
+  }, [playerName, audit, selectedColor, selectedSkin]);
 
   const handleJoinRoom = useCallback((roomName: string) => {
     setRoomId(roomName);
