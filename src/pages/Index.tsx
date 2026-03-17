@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import starLogo from "@/assets/star-logo.png";
 import GameCanvas from "@/components/GameCanvas";
@@ -9,6 +9,7 @@ import { music } from "@/game/music";
 import { PlayerSkin } from "@/game/types";
 import * as C from "@/game/constants";
 import { useSitePresence } from "@/hooks/useSitePresence";
+import { usePlayerAudit } from "@/hooks/usePlayerAudit";
 import { Users, Monitor, Gamepad2 } from "lucide-react";
 
 type GameMode = "solo" | "online";
