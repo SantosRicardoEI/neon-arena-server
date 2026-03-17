@@ -1,5 +1,5 @@
 import type { Boss } from '../../shared/types';
-import { drawLeviathan, drawDefaultBoss } from './renderers';
+import { drawLeviathan, drawDefaultBoss, drawVoidReaper } from './renderers';
 
 export interface BossDefinition {
   id: string;
