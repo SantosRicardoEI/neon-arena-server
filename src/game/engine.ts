@@ -1,21 +1,52 @@
-import { GameState, InputState, Player, PlayerSkin, NetworkPlayerState, NetworkGameState, ChatMessage, ChatMessageType, SimulationEvents } from './types';
-import { createPlayer, createEnemy, createCollectible, createProjectile, createPowerUpItem, createBoss, updateGameState, playerHasPowerUp, applyPlayerMovement, initiateDash, computeMovementVelocity,spawnDeathParticles, } from './simulation';
+/**
+ * Motor principal do jogo no cliente.
+ *
+ * Responsabilidades:
+ * - inicializar o estado local do jogo;
+ * - arrancar em modo solo ou online;
+ * - processar input do jogador local;
+ * - aplicar prediction no cliente quando está online;
+ * - receber snapshots e eventos autoritários do servidor;
+ * - atualizar o estado visual e tocar efeitos/sons;
+ * - correr o loop principal e renderizar cada frame.
+ *
+ * Regras gerais:
+ * - em modo solo, este motor também executa a simulação autoritária local;
+ * - em modo online, a autoridade está no servidor e o cliente limita-se a:
+ *   enviar input, prever localmente alguns movimentos e aplicar snapshots recebidos.
+ */
+
+import {
+  GameState,
+  InputState,
+  Player,
+  PlayerSkin,
+  NetworkGameState,
+  ChatMessage,
+  ChatMessageType,
+  SimulationEvents,
+  Vec2,
+} from './types';import { createPlayer } from '../gameplay/players/factory';
+import {
+  updateGameState,
+  initiateDash,
+  computeMovementVelocity,
+} from './simulation';
+import { createProjectile } from '../gameplay/projectiles/factory';
+import { spawnDeathParticles } from '../gameplay/enemies/effects';
+import { playerHasPowerUp } from '../gameplay/powerups/utils';
 import { render } from './renderer';
-import { MultiplayerManager } from './multiplayer';
-import { playShoot, playEnemyDeath, playCollect, playDamage, playGameOver, playDash, playHealthPickup, playReloadComplete, playDroppedPointsPickup, playChatNotification, playPowerUpPickup, playBossShockwave } from './audio';
+import { playShoot, playEnemyDeath, playCollect, playDamage, playGameOver, playDash, playHealthPickup, playReloadComplete, playDroppedPointsPickup, playPowerUpPickup, playBossShockwave } from './audio';
 import { music } from './music';
 import * as C from './constants';
 import { getShootCooldown, getReloadTime, getMagazineSize } from '../shared/scaling';
-import { buildNetworkGameState, buildPlayerNetworkState } from '../shared/protocol';
-import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, findSafeRespawnPosition, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
+import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
 import { submitScore } from '../lib/leaderboard';
 // Prediction modules
 import { InputBuffer } from '../client/prediction/input-buffer';
 import { predictMovement } from '../client/prediction/movement-prediction';
-import { predictDash } from '../client/prediction/dash-prediction';
 import { interpolateRemotePlayer, setRemotePlayerTarget } from '../client/prediction/interpolation';
 import { GameSocket } from '../client/network/game-socket';
-
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL || "ws://localhost:3001";
 
@@ -24,16 +55,13 @@ export class GameEngine {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private state: GameState;
-  private input: InputState;
+  private input: InputState; 
   private localPlayerId: string;
-  private multiplayer: MultiplayerManager | null = null;
   private running = false;
   private lastTime = 0;
   private animFrameId = 0;
   
   private wasDead = false;
-  private isHost = false;
-  private hostStateSeq = 0;
   private lastReceivedGameStateSeq = -1;
   
   private chatting = false;
@@ -47,6 +75,13 @@ export class GameEngine {
   private socket: GameSocket | null = null;
   private pingIntervalId: number | null = null;
 
+/**
+ * Cria uma nova instância do motor de jogo.
+ *
+ * Inicializa o canvas, input, estado base e escolhe o modo de arranque:
+ * - solo: cria logo o jogador local e define autoridade local;
+ * - online: abre a ligação ao servidor e prepara os handlers de rede.
+ */
   constructor(
   canvas: HTMLCanvasElement,
   input: InputState,
@@ -57,110 +92,118 @@ export class GameEngine {
   playerSkin: PlayerSkin,
   gameMode: "solo" | "online"
 ) {
-  this.canvas = canvas;
-  this.ctx = canvas.getContext('2d')!;
-  this.input = input;
-  this.localPlayerId = playerId;
-  this.gameMode = gameMode;
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d')!;
+    this.input = input;
+    this.localPlayerId = playerId;
+    this.gameMode = gameMode;
 
-  console.log("[engine] gameMode =", this.gameMode);
+    this.state = createGameState(roomId, performance.now());
 
-  // criar estado primeiro
-  this.state = createGameState(roomId, performance.now());
-
-  if (this.gameMode === "solo") {
-    this.state.players.set(playerId, createPlayer(playerId, playerName, playerColor, playerSkin));
+    if (this.isSolo) {
+      this.initSolo(playerId, playerName, playerColor, playerSkin);
+    } else {
+      this.initOnline(roomId, playerName, playerColor, playerSkin);
+    }
   }
 
-  if (this.gameMode === "online") {
-    console.log("[engine] creating GameSocket");
-
-    this.socket = new GameSocket();
-    this.pingIntervalId = window.setInterval(() => {
-      this.socket?.send({
-        type: "client:ping",
-        t: Date.now(),
-      } as any);
-    }, 2000);
-
-    this.socket.connect(SERVER_URL, () => {
-      this.socket?.send({
-        type: "client:join",
-        roomId,
-        playerName,
-        skin: playerSkin,
-        color: playerColor,
-      });
-    });
-
-    this.socket.onMessage((msg) => {
-      // console.log("[engine] socket message", msg);
-
-      if ((msg as any).type === "server:pong") {
-        const ping = Date.now() - (msg as any).t;
-        console.log("[net] ping =", ping, "ms");
-      }
-
-      if (msg.type === "server:room_state") {
-        this.localPlayerId = msg.yourPlayerId;
-        this.state.hostId = msg.hostId;
-        this.state.roomName = msg.roomName;
-      }
-
-      if (msg.type === "server:game_events") {
-        this.handleAuthoritativeGameEvents(msg.events);
-      }
-
-      if (msg.type === "server:world_items_state") {
-        this.state.collectibles = msg.collectibles.map(c => ({
-          id: c.id,
-          pos: { x: c.x, y: c.y },
-          pulsePhase: c.pulsePhase,
-        }));
-
-        this.state.droppedPoints = msg.droppedPoints.map(dp => ({
-          id: dp.id,
-          pos: { x: dp.x, y: dp.y },
-          value: dp.value,
-          pulsePhase: dp.pulsePhase,
-          createdAt: dp.createdAt,
-        }));
-
-        this.state.healthPickups = msg.healthPickups.map(hp => ({
-          id: hp.id,
-          pos: { x: hp.x, y: hp.y },
-          pulsePhase: hp.pulsePhase,
-        }));
-
-        this.state.powerUpItems = msg.powerUpItems.map(pu => ({
-          id: pu.id,
-          type: pu.type as any,
-          pos: { x: pu.x, y: pu.y },
-          pulsePhase: pu.pulsePhase,
-        }));
-      }
-
-      if (msg.type === "server:snapshot") {
-        // console.log("[engine] snapshot players =", msg.state.players);
-        
-        /*
-        console.log(
-          "[engine] snapshot local player raw =",
-          this.localPlayerId,
-          msg.state.players[this.localPlayerId]
-        );
-        */
-
-        this.handleGameStateReceived(msg.state);
-      }
-    });
-  } else {
-    // modo solo = host local, sem rede
-    this.isHost = true;
-    this.state.hostId = playerId;
-  }
+/**
+ * Inicializa o jogo em modo solo.
+ *
+ * Cria o jogador local no estado do jogo e marca este cliente
+ * como autoridade local da sessão.
+ */
+  private initSolo(
+  playerId: string,
+  playerName: string,
+  playerColor: string,
+  playerSkin: PlayerSkin,
+): void {
+  this.state.players.set(
+    playerId,
+    createPlayer(playerId, playerName, playerColor, playerSkin)
+  );
+  this.state.hostId = playerId;
 }
 
+/**
+ * Inicializa o jogo em modo online.
+ *
+ * Cria o socket de jogo, arranca o ping periódico para medir latência,
+ * envia o pedido de join ao servidor e regista os handlers das mensagens
+ * recebidas da rede.
+ */
+private initOnline(
+  roomId: string,
+  playerName: string,
+  playerColor: string,
+  playerSkin: PlayerSkin,
+): void {
+  this.socket = new GameSocket();
+
+  this.pingIntervalId = window.setInterval(() => {
+    this.socket?.send({
+      type: "client:ping",
+      t: Date.now(),
+    } as any);
+  }, 2000);
+
+  this.socket.connect(SERVER_URL, () => {
+    this.socket?.send({
+      type: "client:join",
+      roomId,
+      playerName,
+      skin: playerSkin,
+      color: playerColor,
+    });
+  });
+
+  this.setupSocketHandlers();
+}
+
+/**
+ * Regista os handlers das mensagens recebidas do servidor.
+ *
+ * Trata:
+ * - pong do servidor para cálculo de ping;
+ * - estado da sala e identificação do jogador local;
+ * - eventos autoritários de jogo;
+ * - sincronização de pickups e itens do mundo;
+ * - snapshots completos do estado do jogo.
+ */
+private setupSocketHandlers(): void {
+  this.socket?.onMessage((msg) => {
+    if ((msg as any).type === "server:pong") {
+      const ping = Date.now() - (msg as any).t;
+      console.log("[net] ping =", ping, "ms");
+    }
+
+    if (msg.type === "server:room_state") {
+      this.localPlayerId = msg.yourPlayerId;
+      this.state.hostId = msg.hostId;
+      this.state.roomName = msg.roomName;
+    }
+
+    if (msg.type === "server:game_events") {
+      this.handleAuthoritativeGameEvents(msg.events);
+    }
+
+    if (msg.type === "server:world_items_state") {
+      this.applyWorldItemsState(msg);
+    }
+
+    if (msg.type === "server:snapshot") {
+      this.handleGameStateReceived(msg.state);
+    }
+  });
+}
+
+/**
+ * Arranca o motor de jogo.
+ *
+ * Inicia o loop principal, ativa a música de jogo e liga
+ * os listeners de teclado necessários para o chat.
+ */
   async start() {
     if (this.running) return;
 
@@ -171,6 +214,12 @@ export class GameEngine {
     document.addEventListener('keydown', this.onChatKeyDown);
   }
 
+/**
+ * Pára o motor de jogo.
+ *
+ * Cancela o loop de animação, limpa timers ativos, remove listeners,
+ * fecha a ligação de rede se existir e repõe a música de menu.
+ */
   stop() {
     if (!this.running) return;
     if (this.pingIntervalId !== null) {
@@ -187,26 +236,68 @@ export class GameEngine {
     music.play('menu');
   }
 
+/**
+ * Aplica ao estado local a versão autoritária dos itens do mundo.
+ *
+ * Converte os dados recebidos do servidor para o formato interno usado
+ * pelo cliente, incluindo collectibles, dropped points, health pickups
+ * e power-ups.
+ */
+  private applyWorldItemsState(msg: {
+    collectibles: Array<{ id: string; x: number; y: number; pulsePhase: number }>;
+    droppedPoints: Array<{ id: string; x: number; y: number; value: number; pulsePhase: number; createdAt: number }>;
+    healthPickups: Array<{ id: string; x: number; y: number; pulsePhase: number }>;
+    powerUpItems: Array<{ id: string; x: number; y: number; type: string; pulsePhase: number }>;
+  }): void {
+    this.state.collectibles = msg.collectibles.map(c => ({
+      id: c.id,
+      pos: { x: c.x, y: c.y },
+      pulsePhase: c.pulsePhase,
+    }));
 
-  private handleHostChanged(host: boolean, hostId: string) {
-    this.isHost = host;
-    this.state.hostId = hostId;
-    if (host) this.hostStateSeq = 0;
-    else this.lastReceivedGameStateSeq = -1;
-    const hostPlayer = this.state.players.get(hostId);
-    const hostName = hostPlayer?.name || hostId;
-    this.addSystemEvent('event_host', `${hostName} is now the host`);
-    console.log(`[GameEngine] Host status: ${host ? 'HOST' : 'CLIENT'}`);
+    this.state.droppedPoints = msg.droppedPoints.map(dp => ({
+      id: dp.id,
+      pos: { x: dp.x, y: dp.y },
+      value: dp.value,
+      pulsePhase: dp.pulsePhase,
+      createdAt: dp.createdAt,
+    }));
+
+    this.state.healthPickups = msg.healthPickups.map(hp => ({
+      id: hp.id,
+      pos: { x: hp.x, y: hp.y },
+      pulsePhase: hp.pulsePhase,
+    }));
+
+    this.state.powerUpItems = msg.powerUpItems.map(pu => ({
+      id: pu.id,
+      type: pu.type as any,
+      pos: { x: pu.x, y: pu.y },
+      pulsePhase: pu.pulsePhase,
+    }));
   }
 
+/**
+ * Loop principal do jogo, executado a cada frame.
+ *
+ * Responsabilidades por frame:
+ * - calcular delta time;
+ * - atualizar timers e bosses em solo;
+ * - processar input do jogador local;
+ * - interpolar entidades remotas;
+ * - executar a frame de jogo adequada ao modo atual;
+ * - tocar efeitos/sons com base nos eventos;
+ * - limpar entidades visuais expiradas;
+ * - renderizar o estado atual;
+ * - agendar o frame seguinte.
+ */
   private loop = (timestamp: number) => {
     if (!this.running) return;
 
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
     this.lastTime = timestamp;
 
-    // Round timer logic (host-only decisions)
-    if (this.isHost) {
+    if (this.isSolo) {
       const { roundJustEnded, shouldRestart } = checkRoundTimer(this.state, timestamp);
       if (roundJustEnded) {
         this.addSystemEvent('event_host', 'Round over! Final scores:');
@@ -218,7 +309,6 @@ export class GameEngine {
         this.scoreSubmitted = false;
       }
 
-      // Boss schedule logic
       if (!this.state.roundOver) {
         const bossEvents = updateBossSchedule(this.state, timestamp);
         for (const evt of bossEvents) {
@@ -236,24 +326,9 @@ export class GameEngine {
     this.interpolateRemotePlayers(dt);
     this.interpolateEnemies(dt);
 
-    let events = {
-      enemiesKilled: [],
-      collectiblesGathered: [],
-      playersHit: [],
-      droppedPointsGathered: [],
-      healthPickupsGathered: [],
-      powerUpsGathered: [],
-      reloadCompletedPlayerIds: [],
-      playerKills: []
-    };
-
-    if (this.gameMode === "solo") {
-      events = this.state.roundOver
-        ? events
-        : updateGameState(this.state, this.localPlayerId, dt, timestamp, this.isHost);
-    }
-    // o chat pediu para comentar isto (?)
-    // if (!this.isHost) this.extrapolateEntities(dt);
+    const events = this.isSolo
+      ? this.runSoloFrame(dt, timestamp)
+      : this.runOnlineFrame(dt, timestamp);
 
     if (events.enemiesKilled.length > 0) { console.log('[SFX] enemyDeath'); playEnemyDeath(); }
     if (events.collectiblesGathered.length > 0) { console.log('[SFX] collect'); playCollect(); }
@@ -312,33 +387,71 @@ export class GameEngine {
       this.canvas.width = rect.width;
       this.canvas.height = rect.height;
     }
-
-    // Cleanup expired visual entities
+    
     cleanupExpiredEntities(this.state, timestamp);
 
-    /*
-    console.log(
-      "[engine] local state players before render =",
-      Array.from(this.state.players.entries()).map(([id, p]) => ({
-        id,
-        name: p.name,
-        x: p.pos.x,
-        y: p.pos.y,
-        health: p.health,
-      }))
-    );
-    */
     render(this.ctx, this.state, this.localPlayerId, this.canvas.width, this.canvas.height, timestamp, this.chatting, this.chatInput);
 
-    /*
-    // O chat pediu para comentar isto (?)
-    this.multiplayer?.broadcastState(buildPlayerNetworkState(lp), timestamp);
-    if (this.isHost) this.broadcastGameState(timestamp);
-    */
 
     this.animFrameId = requestAnimationFrame(this.loop);
   };
 
+/**
+ * Executa uma frame completa em modo solo.
+ *
+ * Em solo, o cliente também é autoridade local, por isso este método
+ * corre a simulação completa do jogo e devolve os eventos produzidos
+ * nessa atualização.
+ */
+    private runSoloFrame(dt: number, timestamp: number): SimulationEvents {
+    const emptyEvents: SimulationEvents = {
+      enemiesKilled: [],
+      collectiblesGathered: [],
+      playersHit: [],
+      droppedPointsGathered: [],
+      healthPickupsGathered: [],
+      powerUpsGathered: [],
+      reloadCompletedPlayerIds: [],
+      playerKills: [],
+    };
+
+    if (this.state.roundOver) return emptyEvents;
+
+    return updateGameState(
+      this.state,
+      this.localPlayerId,
+      dt,
+      timestamp,
+      true,
+    );
+  }
+
+/**
+ * Executa a frame em modo online.
+ *
+ * Em online, a simulação autoritária corre no servidor, por isso este
+ * método não altera a simulação do mundo e devolve apenas um conjunto
+ * vazio de eventos locais.
+ */
+  private runOnlineFrame(_dt: number, _timestamp: number): SimulationEvents {
+    return {
+      enemiesKilled: [],
+      collectiblesGathered: [],
+      playersHit: [],
+      droppedPointsGathered: [],
+      healthPickupsGathered: [],
+      powerUpsGathered: [],
+      reloadCompletedPlayerIds: [],
+      playerKills: [],
+    };
+  }
+
+/**
+ * Suaviza a posição visual dos inimigos com base na última posição alvo
+ * recebida da rede.
+ *
+ * Serve para evitar movimentos bruscos causados por snapshots discretos.
+ */
   private interpolateEnemies(dt: number) {
   for (const enemy of this.state.enemies) {
     if (!enemy.targetPos) continue;
@@ -350,6 +463,11 @@ export class GameEngine {
   }
 }
 
+/**
+ * Envia os scores finais dos jogadores para o leaderboard.
+ *
+ * Só envia uma vez por ronda e ignora jogadores com score zero.
+ */
   private submitScores() {
     if (this.scoreSubmitted) return;
     this.scoreSubmitted = true;
@@ -360,54 +478,16 @@ export class GameEngine {
     });
   }
 
-  private extrapolateEntities(dt: number) {
-    for (const enemy of this.state.enemies) {
-      enemy.pos.x += enemy.vel.x * dt;
-      enemy.pos.y += enemy.vel.y * dt;
-
-      enemy.pos.x += enemy.vel.x * dt;
-      enemy.pos.y += enemy.vel.y * dt;
-      if (enemy.pos.x < 0 || enemy.pos.x > C.WORLD_WIDTH) {
-        enemy.vel.x *= -1;
-        enemy.pos.x = Math.max(0, Math.min(C.WORLD_WIDTH, enemy.pos.x));
-      }
-      if (enemy.pos.y < 0 || enemy.pos.y > C.WORLD_HEIGHT) {
-        enemy.vel.y *= -1;
-        enemy.pos.y = Math.max(0, Math.min(C.WORLD_HEIGHT, enemy.pos.y));
-      }
-    }
-    for (const boss of this.state.bosses) {
-      if (boss.targetPlayerId) {
-        const target = this.state.players.get(boss.targetPlayerId);
-        if (target && target.health > 0) {
-          const dx = target.pos.x - boss.pos.x;
-          const dy = target.pos.y - boss.pos.y;
-          const len = Math.sqrt(dx * dx + dy * dy);
-          if (len > 1) {
-            boss.vel.x = (dx / len) * boss.speed;
-            boss.vel.y = (dy / len) * boss.speed;
-          }
-        }
-      }
-      boss.pos.x += boss.vel.x * dt;
-      boss.pos.y += boss.vel.y * dt;
-      boss.pos.x = Math.max(boss.size / 2, Math.min(C.WORLD_WIDTH - boss.size / 2, boss.pos.x));
-      boss.pos.y = Math.max(boss.size / 2, Math.min(C.WORLD_HEIGHT - boss.size / 2, boss.pos.y));
-    }
-    for (const proj of this.state.projectiles) {
-      proj.trail.push({ x: proj.pos.x, y: proj.pos.y });
-      if (proj.trail.length > 8) proj.trail.shift();
-      proj.pos.x += proj.vel.x * dt;
-      proj.pos.y += proj.vel.y * dt;
-    }
-  }
-
-  // Nao usado | NAO USAR
-  private broadcastGameState(now: number) {
-    const gs = buildNetworkGameState(this.state, ++this.hostStateSeq, now);
-    this.multiplayer?.broadcastGameState(gs, now);
-  }
-
+/**
+ * Aplica ao cliente os eventos autoritários recebidos do servidor.
+ *
+ * Trata efeitos visuais, sons e mensagens de sistema relacionados com:
+ * - mortes de inimigos e bosses;
+ * - dano em jogadores;
+ * - recolha de pontos, vida e power-ups;
+ * - conclusão de reload;
+ * - kills entre jogadores.
+ */
   private handleAuthoritativeGameEvents(events: SimulationEvents) {
     if (events.enemiesKilled.length > 0) {
       playEnemyDeath();
@@ -429,8 +509,6 @@ export class GameEngine {
             radius: 120,
             createdAt: localNow,
           });
-
-          // se quiseres, também podes criar várias explosões ou partículas especiais
         }
       }
     }
@@ -489,6 +567,22 @@ export class GameEngine {
   }
 }
 
+/**
+ * Aplica um snapshot autoritário do estado do jogo recebido do servidor.
+ *
+ * Atualiza:
+ * - inimigos;
+ * - projéteis;
+ * - explosões;
+ * - jogadores;
+ * - bosses;
+ * - estado da ronda e eventos de bosses.
+ *
+ * Também faz reconciliação do jogador local:
+ * - corrige a posição para o estado autoritário;
+ * - descarta inputs já processados pelo servidor;
+ * - reaplica inputs pendentes para manter responsividade.
+ */
   private handleGameStateReceived(gs: NetworkGameState) {
     if (gs.seq <= this.lastReceivedGameStateSeq) return;
     this.lastReceivedGameStateSeq = gs.seq;
@@ -508,7 +602,6 @@ export class GameEngine {
         existing.maxHealth = e.maxHealth ?? 1;
         existing.state = e.state as 'passive' | 'aggressive';
 
-        // suavizar posição em vez de dar snap direto
         existing.targetPos = { x: e.x, y: e.y };
         existing.lastNetworkUpdate = performance.now();
 
@@ -594,15 +687,12 @@ export class GameEngine {
       p.skin = data.skin || p.skin;
 
       if (pid === this.localPlayerId) {
-        // 1. corrigir para estado autoritário do servidor
         p.pos.x = data.x;
         p.pos.y = data.y;
         p.aimAngle = data.aimAngle;
 
-        // 2. descartar inputs já processados pelo servidor
         this.inputBuffer.discardUpTo(data.lastProcessedInputSeq);
 
-        // 3. reaplicar inputs pendentes
         const pendingInputs = this.inputBuffer.getAfter(data.lastProcessedInputSeq);
         for (const input of pendingInputs) {
           predictMovement(p, input.moveDir, 1 / 60, input.time);
@@ -687,30 +777,28 @@ export class GameEngine {
     this.state.bossScheduleTriggered = new Set(gs.bossScheduleTriggered || []);
   }
 
+/**
+ * Processa o input do jogador local no frame atual.
+ *
+ * Responsabilidades:
+ * - tratar respawn;
+ * - calcular direção de movimento;
+ * - calcular mira;
+ * - guardar input no buffer de reconciliação;
+ * - enviar input ao servidor em online;
+ * - tratar movimento e dash;
+ * - tratar disparo;
+ * - tratar reload manual.
+ */
   private processInput(dt: number, now: number) {
     const player = this.state.players.get(this.localPlayerId);
     if (!player) return;
 
-    // Respawn (host-authoritative)
-    if (player.health <= 0) {
-      if (
-        this.input.keys.has('f') &&
-        now - this.lastRespawnRequestAt > C.RESPAWN_REQUEST_COOLDOWN_MS
-      ) {
-        this.lastRespawnRequestAt = now;
-
-        if (this.gameMode === "solo") {
-          this.handleRespawnRequest(this.localPlayerId);
-        } else {
-          this.socket?.send({
-            type: "client:respawn",
-          });
-        }
-      }
+    if (this.handleRespawnInput(player, now)) {
       return;
     }
 
-    // Build move direction from keys
+ 
     let vx = 0, vy = 0;
     if (this.input.keys.has('w') || this.input.keys.has('arrowup')) vy -= 1;
     if (this.input.keys.has('s') || this.input.keys.has('arrowdown')) vy += 1;
@@ -718,7 +806,6 @@ export class GameEngine {
     if (this.input.keys.has('d') || this.input.keys.has('arrowright')) vx += 1;
     const moveDir = { x: vx, y: vy };
 
-    // Aim
     const camX = player.pos.x - this.canvas.width / 2;
     const camY = player.pos.y - this.canvas.height / 2;
     const worldMouseX = this.input.mouseX + camX;
@@ -726,7 +813,6 @@ export class GameEngine {
     const nextAimAngle = Math.atan2(worldMouseY - player.pos.y, worldMouseX - player.pos.x);
     player.aimAngle = Number.isFinite(nextAimAngle) ? nextAimAngle : 0;
 
-    // Record input into buffer (for future reconciliation)
     this.inputBuffer.push({
       time: now,
       moveDir,
@@ -736,126 +822,25 @@ export class GameEngine {
       reload: this.input.keys.has('r'),
     });
 
-    if (this.gameMode === "online") {
-      this.socket?.send({
-        type: "client:input",
-        seq: this.inputBuffer.currentSeq - 1,
-        moveDir,
-        aimAngle: Number.isFinite(player.aimAngle) ? player.aimAngle : 0,
-        clientTime: now,
-      });
+    if (!this.isSolo) {
+      this.sendOnlineInput(now, moveDir, player.aimAngle);
     }
 
-    // Movement / dash
-    if (this.gameMode === "solo") {
-      const hasSpeed = playerHasPowerUp(player, 'speed', now);
-      const vel = computeMovementVelocity(moveDir, player.score, hasSpeed);
-      player.vel.x = vel.x;
-      player.vel.y = vel.y;
+    this.handleMovementInput(player, moveDir, dt, now);
 
-      if (this.input.keys.has(' ')) {
-        if (initiateDash(player, player.aimAngle, moveDir, now)) {
-          playDash();
-        }
-      }
-    } else {
-      predictMovement(player, moveDir, dt, now);
+    this.handleShootInput(player, now);
 
-      if (this.input.keys.has(' ')) {
-        const canDash = !player.isDashing && now - player.lastDash > C.DASH_COOLDOWN_MS;
-
-        if (canDash) {
-          this.socket?.send({
-            type: "client:dash",
-            aimAngle: player.aimAngle,
-          });
-
-          playDash();
-          player.lastDash = now;
-        }
-      }
-    }
-
-    // Shoot
-    let shootCooldown = getShootCooldown(player.score);
-    if (playerHasPowerUp(player, 'rapid_fire', now)) shootCooldown *= C.POWERUP_RAPID_FIRE_COOLDOWN_MULTIPLIER;
-    const reloadTime = getReloadTime(player.score);
-    const magSize = getMagazineSize(player.score);
-    const canShoot = player.ammo > 0 && (player.reloadingUntil === 0 || now >= player.reloadingUntil);
-    if (this.input.mouseDown && now - player.lastShot > shootCooldown && canShoot) {
-      if (player.reloadingUntil > 0 && now >= player.reloadingUntil) {
-        player.ammo = magSize;
-        player.reloadingUntil = 0;
-        playReloadComplete();
-      }
-      player.lastShot = now;
-      player.ammo--;
-
-      // --- Local visual projectile prediction ---
-      // Create a predicted projectile for immediate visual feedback.
-      // This is NOT authoritative — the host/server creates the real projectile.
-      if (this.gameMode === "solo") {
-        const proj = createProjectile(player, player.aimAngle, now);
-        this.state.projectiles.push(proj);
-      } else {
-        this.socket?.send({
-          type: "client:shoot",
-          aimAngle: player.aimAngle,
-        });
-      }
-
-      // --- Shoot intent (protocol-aligned) ---
-      // Send only the aim angle — no projectile ID or spawn position.
-      // The host/server is responsible for creating the authoritative projectile.
-      
-      // Chat tambem disse para comentar isto (?)
-      // this.multiplayer?.broadcastShoot(player.aimAngle);
-      playShoot();
-
-      if (player.ammo <= 0) {
-        player.reloadingUntil = now + reloadTime;
-      }
-    }
-
-    // Manual reload with R
-    if (
-      this.input.keys.has('r') &&
-      player.health > 0 &&
-      player.ammo < getMagazineSize(player.score) &&
-      player.reloadingUntil === 0
-    ) {
-      if (this.gameMode === "solo") {
-        player.reloadingUntil = now + reloadTime;
-      } else {
-        this.socket?.send({
-          type: "client:reload",
-        });
-      }
-    }
+    this.handleReloadInput(player, now);
   }
 
-  private handleRemotePlayerUpdate(s: NetworkPlayerState) {
-    let p = this.state.players.get(s.id);
-    const isNew = !p;
-    if (!p) {
-      p = createPlayer(s.id, s.name, s.color || C.COLORS.otherPlayer, s.skin || 'circle');
-      p.pos.x = s.x;
-      p.pos.y = s.y;
-      p.aimAngle = s.aimAngle;
-      this.state.players.set(s.id, p);
-    }
-    if (isNew) {
-      this.addSystemEvent('event_join', `${s.name} joined the game`);
-    }
-    p.name = s.name;
-    p.color = s.color || p.color;
-    p.skin = s.skin || p.skin;
-    // Use prediction module's interpolation target setter
-    setRemotePlayerTarget(p, { x: s.x, y: s.y }, s.aimAngle, performance.now());
-  }
-
+/**
+ * Trata um pedido de respawn em modo solo.
+ *
+ * Em solo, o cliente tem autoridade local e pode executar o respawn
+ * diretamente no estado do jogo.
+ */
   private handleRespawnRequest(playerId: string) {
-    if (!this.isHost) return;
+    if (!this.isSolo) return;
     const success = respawnPlayer(this.state, playerId, performance.now());
     if (success) {
       const player = this.state.players.get(playerId);
@@ -865,6 +850,12 @@ export class GameEngine {
     }
   }
 
+/**
+ * Suaviza a posição visual dos jogadores remotos.
+ *
+ * Ignora o jogador local e aplica interpolação apenas aos jogadores
+ * controlados por outros clientes.
+ */
   private interpolateRemotePlayers(dt: number) {
     for (const [id, player] of this.state.players) {
       if (id === this.localPlayerId) continue;
@@ -873,8 +864,16 @@ export class GameEngine {
     }
   }
 
-  // ===== Chat =====
-
+/**
+ * Handler de teclado usado pelo sistema de chat.
+ *
+ * Permite:
+ * - abrir o chat com Enter;
+ * - cancelar com Escape;
+ * - enviar mensagem com Enter;
+ * - apagar com Backspace;
+ * - escrever caracteres válidos no input de chat.
+ */
   private onChatKeyDown = (e: KeyboardEvent) => {
     if (!this.running) return;
 
@@ -913,9 +912,6 @@ export class GameEngine {
         const name = lp?.name || this.localPlayerId;
         const text = this.chatInput.trim().slice(0, C.CHAT_MAX_LENGTH);
         this.addChatMessage(this.localPlayerId, name, text);
-
-        // Chat tambem disse para comentar isto (?)
-        // this.multiplayer?.broadcastChat(name, text);
       }
       this.chatting = false;
       this.chatInput = '';
@@ -933,6 +929,12 @@ export class GameEngine {
     }
   };
 
+/**
+ * Adiciona uma mensagem ao histórico local de chat.
+ *
+ * Mantém um número máximo de mensagens armazenadas para evitar
+ * crescimento indefinido da lista.
+ */
   private addChatMessage(senderId: string, senderName: string, text: string, type: ChatMessageType = 'chat') {
     const msg: ChatMessage = {
       id: `chat_${this.chatNextId++}`,
@@ -948,19 +950,232 @@ export class GameEngine {
     }
   }
 
+/**
+ * Adiciona ao chat uma mensagem de sistema.
+ *
+ * É usado para eventos do jogo como kills, respawns, bosses,
+ * recolhas e mudanças de estado relevantes para o jogador.
+ */
   private addSystemEvent(type: ChatMessageType, text: string) {
     this.addChatMessage('system', 'SYSTEM', text, type);
   }
 
+/**
+ * Indica se o jogador está atualmente a escrever no chat.
+ */
   get isChatting(): boolean {
     return this.chatting;
   }
 
+  /**
+ * Devolve o conteúdo atual da caixa de input do chat.
+ */
   get currentChatInput(): string {
     return this.chatInput;
   }
 
+/**
+ * Devolve a referência ao jogador local no estado atual do jogo.
+ */
   getLocalPlayer(): Player | undefined {
     return this.state.players.get(this.localPlayerId);
   }
+
+  /**
+ * Trata o input de respawn do jogador local.
+ *
+ * Se o jogador estiver morto:
+ * - em solo, executa o respawn localmente;
+ * - em online, envia o pedido de respawn ao servidor.
+ *
+ * Devolve true se o jogador está morto e o processamento de input
+ * normal deve parar neste frame.
+ */
+  private handleRespawnInput(player: Player, now: number): boolean {
+  if (player.health > 0) return false;
+
+  if (
+    this.input.keys.has('f') &&
+    now - this.lastRespawnRequestAt > C.RESPAWN_REQUEST_COOLDOWN_MS
+  ) {
+    this.lastRespawnRequestAt = now;
+
+    if (this.isSolo) {
+      this.handleRespawnRequest(this.localPlayerId);
+    } else {
+      this.socket?.send({
+        type: "client:respawn",
+      });
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Envia ao servidor o input atual do jogador local.
+ *
+ * Inclui:
+ * - sequência do input;
+ * - direção de movimento;
+ * - ângulo de mira;
+ * - timestamp do cliente.
+ *
+ * É usado para simulação autoritária e reconciliação no online.
+ */
+  private sendOnlineInput(now: number, moveDir: Vec2, aimAngle: number): void {
+    if (!this.socket) return;
+
+    this.socket.send({
+      type: "client:input",
+      seq: this.inputBuffer.currentSeq - 1,
+      moveDir,
+      aimAngle: Number.isFinite(aimAngle) ? aimAngle : 0,
+      clientTime: now,
+    });
+  }
+
+/**
+ * Trata o movimento e dash do jogador local.
+ *
+ * Em solo:
+ * - calcula a velocidade real localmente;
+ * - inicia o dash diretamente.
+ *
+ * Em online:
+ * - aplica prediction local do movimento;
+ * - envia pedido de dash ao servidor quando aplicável.
+ */
+  private handleMovementInput(
+  player: Player,
+  moveDir: Vec2,
+  dt: number,
+  now: number,
+): void {
+  if (this.isSolo) {
+    const hasSpeed = playerHasPowerUp(player, 'speed', now);
+    const vel = computeMovementVelocity(moveDir, player.score, hasSpeed);
+    player.vel.x = vel.x;
+    player.vel.y = vel.y;
+
+    if (this.input.keys.has(' ')) {
+      if (initiateDash(player, player.aimAngle, moveDir, now)) {
+        playDash();
+      }
+    }
+
+    return;
+  }
+
+  predictMovement(player, moveDir, dt, now);
+
+  if (this.input.keys.has(' ')) {
+    const canDash = !player.isDashing && now - player.lastDash > C.DASH_COOLDOWN_MS;
+
+    if (canDash) {
+      this.socket?.send({
+        type: "client:dash",
+        aimAngle: player.aimAngle,
+      });
+
+      playDash();
+      player.lastDash = now;
+    }
+  }
+}
+
+/**
+ * Trata o disparo do jogador local.
+ *
+ * Responsabilidades:
+ * - verificar cooldown e condições de disparo;
+ * - concluir reload pendente se aplicável;
+ * - gastar munição;
+ * - criar projétil local em solo;
+ * - enviar intenção de disparo ao servidor em online;
+ * - tocar som de disparo;
+ * - iniciar reload automático quando o carregador esvazia.
+ */
+private handleShootInput(player: Player, now: number): void {
+  let shootCooldown = getShootCooldown(player.score);
+  if (playerHasPowerUp(player, 'rapid_fire', now)) {
+    shootCooldown *= C.POWERUP_RAPID_FIRE_COOLDOWN_MULTIPLIER;
+  }
+
+  const reloadTime = getReloadTime(player.score);
+  const magSize = getMagazineSize(player.score);
+  const canShoot =
+    player.ammo > 0 &&
+    (player.reloadingUntil === 0 || now >= player.reloadingUntil);
+
+  if (!this.input.mouseDown || now - player.lastShot <= shootCooldown || !canShoot) {
+    return;
+  }
+
+  if (player.reloadingUntil > 0 && now >= player.reloadingUntil) {
+    player.ammo = magSize;
+    player.reloadingUntil = 0;
+    playReloadComplete();
+  }
+
+  player.lastShot = now;
+  player.ammo--;
+
+  if (this.isSolo) {
+    const proj = createProjectile(player, player.aimAngle, now);
+    this.state.projectiles.push(proj);
+  } else {
+    this.socket?.send({
+      type: "client:shoot",
+      aimAngle: player.aimAngle,
+    });
+  }
+
+  playShoot();
+
+  if (player.ammo <= 0) {
+    player.reloadingUntil = now + reloadTime;
+  }
+}
+
+/**
+ * Trata o reload manual do jogador local.
+ *
+ * Em solo:
+ * - inicia o reload diretamente no estado local.
+ *
+ * Em online:
+ * - envia ao servidor o pedido de reload.
+ */
+private handleReloadInput(player: Player, now: number): void {
+  if (
+    !this.input.keys.has('r') ||
+    player.health <= 0 ||
+    player.ammo >= getMagazineSize(player.score) ||
+    player.reloadingUntil !== 0
+  ) {
+    return;
+  }
+
+  const reloadTime = getReloadTime(player.score);
+
+  if (this.isSolo) {
+    player.reloadingUntil = now + reloadTime;
+  } else {
+    this.socket?.send({
+      type: "client:reload",
+    });
+  }
+}
+
+/**
+ * Indica se o motor está a correr em modo solo.
+ *
+ * É usado para distinguir autoridade local de simulação
+ * face ao modo online com servidor autoritário.
+ */
+  private get isSolo(): boolean {
+    return this.gameMode === "solo";
+  }
+
 }

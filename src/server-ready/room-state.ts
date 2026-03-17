@@ -6,15 +6,18 @@
  * boss scheduling, round management, and respawning.
  */
 import {
-  GameState, Player, BossSpawnEvent, SimulationEvents,
+  GameState
 } from '../shared/types';
 import * as C from '../shared/constants';
 import { getMagazineSize } from '../shared/scaling';
-import { dist } from '../shared/math';
+
 import {
-  createPlayer, createEnemy, createCollectible, createBoss,
-  updateGameState,
-} from '../game/simulation';
+  createCollectible,
+} from '../gameplay/pickups/factory';
+import { BOSS_REGISTRY } from '../gameplay/bosses/registry';
+import { createBoss } from '../gameplay/bosses/factory';
+import { createEnemy } from '../gameplay/enemies/factory';
+import { BOSS_SCHEDULE } from '../gameplay/bosses/schedule';
 
 // =============================================
 // Game State Factory
@@ -73,14 +76,14 @@ export function updateBossSchedule(state: GameState, now: number): BossScheduleE
   const events: BossScheduleEvent[] = [];
   const elapsed = now - state.roundStartTime;
 
-  for (let i = 0; i < C.BOSS_SCHEDULE.length; i++) {
+  for (let i = 0; i < BOSS_SCHEDULE.length; i++) {
     if (state.bossScheduleTriggered.has(i)) continue;
-    const entry = C.BOSS_SCHEDULE[i];
+    const entry = BOSS_SCHEDULE[i];
     const warningTime = entry.spawnAtMs - C.BOSS_SPAWN_WARNING_MS;
 
     // Start warning countdown
     if (elapsed >= warningTime && !state.bossSpawnEvents.some(e => e.scheduleIndex === i)) {
-      const def = C.BOSS_REGISTRY.find(b => b.id === entry.bossId);
+      const def = BOSS_REGISTRY.find(b => b.id === entry.bossId);
       if (!def) continue;
       state.bossSpawnEvents.push({
         scheduleIndex: i,
@@ -96,7 +99,7 @@ export function updateBossSchedule(state: GameState, now: number): BossScheduleE
     if (elapsed >= entry.spawnAtMs) {
       const evt = state.bossSpawnEvents.find(e => e.scheduleIndex === i);
       if (evt && !evt.spawned) {
-        const def = C.BOSS_REGISTRY.find(b => b.id === entry.bossId);
+        const def = BOSS_REGISTRY.find(b => b.id === entry.bossId);
         if (def) {
           const boss = createBoss(def);
           state.bosses.push(boss);

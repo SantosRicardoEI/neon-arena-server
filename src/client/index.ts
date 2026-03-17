@@ -7,7 +7,6 @@
 export { createInputState, setupInput } from '../game/input';
 export { render } from '../game/renderer';
 export { music } from '../game/music';
-export { MultiplayerManager } from '../game/multiplayer';
 
 // Audio SFX
 export {

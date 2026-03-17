@@ -16,10 +16,10 @@ import type {
 import {
   computeMovementVelocity,
   initiateDash,
-  createPlayer,
-  createProjectile,
-  playerHasPowerUp,
 } from '../game/simulation';
+import { createPlayer } from '../gameplay/players/factory';
+import { createProjectile } from '../gameplay/projectiles/factory';
+import { playerHasPowerUp } from '../gameplay/powerups/utils';
 import { getShootCooldown, getReloadTime, getMagazineSize } from '../shared/scaling';
 import * as C from '../shared/constants';
 import { respawnPlayer } from './room-state';

@@ -5,7 +5,8 @@
  * NO browser API dependencies — consumes abstract player state and timestamps.
  */
 import type { Player, Vec2 } from '../../shared/types';
-import { applyPlayerMovement, computeMovementVelocity, playerHasPowerUp } from '../../game/simulation';
+import { applyPlayerMovement, computeMovementVelocity } from '../../game/simulation';
+import { playerHasPowerUp } from '../../gameplay/powerups/utils';
 import * as C from '../../game/constants';
 
 /**

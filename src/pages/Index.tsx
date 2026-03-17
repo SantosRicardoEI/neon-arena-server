@@ -85,9 +85,6 @@ const Index = () => {
     }
   }, [screen]);
 
-  // Room cleanup is now handled by presence sync in multiplayer.ts
-  // No need for beforeunload handler
-
   const handleGoToLobby = useCallback(() => {
     const trimmedName = playerName.trim() || "Player";
     setPlayerName(trimmedName);
