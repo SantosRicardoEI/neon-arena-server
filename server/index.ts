@@ -281,7 +281,8 @@ wss.on('connection', (ws) => {
       }
     }
 
-    broadcastSnapshot(room, Date.now());
+    // Removi esta
+    // broadcastSnapshot(room, Date.now());
 
   } catch (error) {
     console.error('[server] failed to parse message', error);
