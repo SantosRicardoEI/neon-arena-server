@@ -59,6 +59,74 @@ export type Database = {
         }
         Relationships: []
       }
+      player_events: {
+        Row: {
+          created_at: string
+          event_type: string
+          game_mode: string | null
+          id: string
+          metadata: Json | null
+          room_id: string | null
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type: string
+          game_mode?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string
+          game_mode?: string | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "player_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      player_sessions: {
+        Row: {
+          entered_site_at: string
+          id: string
+          left_site_at: string | null
+          player_color: string | null
+          player_name: string | null
+          player_skin: string | null
+          tab_id: string
+        }
+        Insert: {
+          entered_site_at?: string
+          id?: string
+          left_site_at?: string | null
+          player_color?: string | null
+          player_name?: string | null
+          player_skin?: string | null
+          tab_id: string
+        }
+        Update: {
+          entered_site_at?: string
+          id?: string
+          left_site_at?: string | null
+          player_color?: string | null
+          player_name?: string | null
+          player_skin?: string | null
+          tab_id?: string
+        }
+        Relationships: []
+      }
       rooms: {
         Row: {
           created_at: string
