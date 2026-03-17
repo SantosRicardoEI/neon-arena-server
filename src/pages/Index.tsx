@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import starLogo from "@/assets/star-logo.png";
 import GameCanvas from "@/components/GameCanvas";
@@ -9,6 +9,7 @@ import { music } from "@/game/music";
 import { PlayerSkin } from "@/game/types";
 import * as C from "@/game/constants";
 import { useSitePresence } from "@/hooks/useSitePresence";
+import { usePlayerAudit } from "@/hooks/usePlayerAudit";
 import { Users, Monitor, Gamepad2 } from "lucide-react";
 
 type GameMode = "solo" | "online";
@@ -79,6 +80,8 @@ const Index = () => {
     roomId: screen === "game" ? roomId : null,
   });
 
+  const audit = usePlayerAudit(tabId);
+
   useEffect(() => {
     if (screen !== "game") {
       music.play("menu");
@@ -89,18 +92,23 @@ const Index = () => {
     const trimmedName = playerName.trim() || "Player";
     setPlayerName(trimmedName);
     setScreen("lobby");
-  }, [playerName]);
+    audit.updatePlayer(trimmedName, selectedColor, selectedSkin);
+    audit.logEvent("lobby_enter");
+  }, [playerName, audit, selectedColor, selectedSkin]);
 
   const handleJoinRoom = useCallback((roomName: string) => {
     setRoomId(roomName);
     setGameMode("online");
     setScreen("game");
-  }, []);
+    audit.updatePlayer(playerName.trim() || "Player", selectedColor, selectedSkin);
+    audit.logEvent("game_start", { game_mode: "online", room_id: roomName });
+  }, [audit, playerName, selectedColor, selectedSkin]);
 
   const handleBackToMenu = useCallback(() => {
+    audit.logEvent("game_end", { game_mode: gameMode, room_id: roomId });
     setScreen("menu");
     setGameMode(null);
-  }, []);
+  }, [audit, gameMode, roomId]);
 
   const handleSoloStart = useCallback(() => {
   const trimmedName = playerName.trim() || "Player";
@@ -108,7 +116,9 @@ const Index = () => {
   setRoomId("solo");
   setGameMode("solo");
   setScreen("game");
-}, [playerName]);
+  audit.updatePlayer(trimmedName, selectedColor, selectedSkin);
+  audit.logEvent("game_start", { game_mode: "solo" });
+}, [playerName, audit, selectedColor, selectedSkin]);
 
 const handleLobbyClick = useCallback(() => {
   const confirmed = window.confirm(

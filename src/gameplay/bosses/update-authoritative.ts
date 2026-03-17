@@ -1,6 +1,4 @@
-import type {
-  BossDefinition,
-} from '../../game/constants';
+import type { BossDefinition } from './registry';
 import * as C from '../../game/constants';
 import type {
   DroppedPoints,

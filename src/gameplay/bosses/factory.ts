@@ -1,8 +1,9 @@
 import type { Boss } from '../../shared/types';
+import type { BossDefinition } from './registry';
 import * as C from '../../game/constants';
 import { genId } from '../core/id';
 
-export function createBoss(def: C.BossDefinition): Boss {
+export function createBoss(def: BossDefinition): Boss {
   const edge = Math.floor(Math.random() * 4);
   let x: number;
   let y: number;

@@ -64,3 +64,8 @@ export const COLORS = {
   healthPickup: "hsl(120, 80%, 55%)",
   hudText: "hsl(240, 10%, 95%)",
 };
+
+/** Leviathan boss visual constants */
+export const LEVIATHAN_ROTATION_SPEED = 0.4;
+export const LEVIATHAN_TENTACLE_COUNT = 8;
+export const LEVIATHAN_TENTACLE_LENGTH = 1.2;
