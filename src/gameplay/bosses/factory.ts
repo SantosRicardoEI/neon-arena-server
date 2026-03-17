@@ -1,4 +1,5 @@
 import type { Boss } from '../../shared/types';
+import type { BossDefinition } from './registry';
 import * as C from '../../game/constants';
 import { genId } from '../core/id';
 
