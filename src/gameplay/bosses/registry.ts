@@ -84,6 +84,25 @@ export const BOSS_REGISTRY: BossDefinition[] = [
       drawVoidReaper(ctx, boss, def, now);
     },
   },
+  {
+    id: "solar_archon",
+    name: "SOLAR ARCHON",
+    size: 120,
+    health: 100,
+    speed: 50,
+    damage: 45,
+    detectRange: 1600,
+    killScore: 1800,
+    color: "hsl(40, 100%, 45%)",
+    glowColor: "hsl(45, 100%, 75%)",
+    shockwaveRadius: 350,
+    shockwaveDamage: 40,
+    shockwaveCooldownMs: 7000,
+    shockwaveTriggerRange: 400,
+    render: (ctx, boss, def, now) => {
+      drawSolarArchon(ctx, boss, def, now);
+    },
+  },
 ];
 
 export function getBossDefinition(id: string): BossDefinition {
