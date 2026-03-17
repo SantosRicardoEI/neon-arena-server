@@ -103,9 +103,10 @@ const Index = () => {
   }, [audit, playerName, selectedColor, selectedSkin]);
 
   const handleBackToMenu = useCallback(() => {
+    audit.logEvent("game_end", { game_mode: gameMode, room_id: roomId });
     setScreen("menu");
     setGameMode(null);
-  }, []);
+  }, [audit, gameMode, roomId]);
 
   const handleSoloStart = useCallback(() => {
   const trimmedName = playerName.trim() || "Player";
