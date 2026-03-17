@@ -16,6 +16,7 @@
  *   enviar input, prever localmente alguns movimentos e aplicar snapshots recebidos.
  */
 
+import { isControlPressed } from './controls';
 import type { DevSpawnCategory, DevSpawnOptionId } from '../gameplay/dev/types';
 import { spawnDevEntity, clearDevSpawnedEntities } from '../gameplay/dev/spawn-actions';
 import {
@@ -858,10 +859,10 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
 
  
     let vx = 0, vy = 0;
-    if (this.input.keys.has('w') || this.input.keys.has('arrowup')) vy -= 1;
-    if (this.input.keys.has('s') || this.input.keys.has('arrowdown')) vy += 1;
-    if (this.input.keys.has('a') || this.input.keys.has('arrowleft')) vx -= 1;
-    if (this.input.keys.has('d') || this.input.keys.has('arrowright')) vx += 1;
+    if (isControlPressed(this.input, 'move_up')) vy -= 1;
+    if (isControlPressed(this.input, 'move_down')) vy += 1;
+    if (isControlPressed(this.input, 'move_left')) vx -= 1;
+    if (isControlPressed(this.input, 'move_right')) vx += 1;
     const moveDir = { x: vx, y: vy };
 
     const camX = player.pos.x - this.canvas.width / 2;
@@ -875,9 +876,9 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
       time: now,
       moveDir,
       aimAngle: player.aimAngle,
-      shoot: this.input.mouseDown,
-      dash: this.input.keys.has(' '),
-      reload: this.input.keys.has('r'),
+      shoot: isControlPressed(this.input, 'shoot'),
+      dash: isControlPressed(this.input, 'dash'),
+      reload: isControlPressed(this.input, 'reload'),
     });
 
     if (!this.isLocalMode) {
@@ -1059,7 +1060,7 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
   if (player.health > 0) return false;
 
   if (
-    this.input.keys.has('f') &&
+    isControlPressed(this.input, 'respawn') &&
     now - this.lastRespawnRequestAt > C.RESPAWN_REQUEST_COOLDOWN_MS
   ) {
     this.lastRespawnRequestAt = now;
@@ -1122,7 +1123,7 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
     player.vel.x = vel.x;
     player.vel.y = vel.y;
 
-    if (this.input.keys.has(' ')) {
+    if (isControlPressed(this.input, 'dash')) {
       if (initiateDash(player, player.aimAngle, moveDir, now)) {
         playDash();
       }
@@ -1176,7 +1177,7 @@ private handleShootInput(player: Player, now: number): void {
     player.ammo > 0 &&
     (player.reloadingUntil === 0 || now >= player.reloadingUntil);
 
-  if (!this.input.mouseDown || now - player.lastShot <= shootCooldown || !canShoot) {
+  if (!isControlPressed(this.input, 'shoot') || now - player.lastShot <= shootCooldown || !canShoot) {
     return;
   }
 
@@ -1217,7 +1218,7 @@ private handleShootInput(player: Player, now: number): void {
  */
 private handleReloadInput(player: Player, now: number): void {
   if (
-    !this.input.keys.has('r') ||
+    !isControlPressed(this.input, 'reload') ||
     player.health <= 0 ||
     player.ammo >= getMagazineSize(player.score) ||
     player.reloadingUntil !== 0

@@ -26,15 +26,7 @@ export const UI_DEV_PANEL_WIDTH = 288;
 // Controls help text
 export const UI_CONTROLS_TITLE = "CONTROLS";
 export const UI_CONTROL_MOVE_LABEL = "MOVE";
-export const UI_CONTROL_MOVE_VALUE = "WASD";
-export const UI_CONTROL_DASH_LABEL = "DASH";
-export const UI_CONTROL_DASH_VALUE = "SPACE";
-export const UI_CONTROL_AIM_LABEL = "AIM";
-export const UI_CONTROL_AIM_VALUE = "MOUSE";
-export const UI_CONTROL_SHOOT_LABEL = "SHOOT";
-export const UI_CONTROL_SHOOT_VALUE = "LEFT CLICK";
-export const UI_CONTROL_RELOAD_LABEL = "RELOAD";
-export const UI_CONTROL_RELOAD_VALUE = "R";
+
 
 // Controls help colors
 export const UI_CONTROLS_PANEL_BG = "hsla(233, 47%, 4%, 0.75)";

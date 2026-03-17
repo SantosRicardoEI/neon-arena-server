@@ -6,6 +6,7 @@ import {
   ChatMessageType,
 } from '../../shared/types';
 
+import { getControlDisplayValue, getMovementDisplayValue } from '../../game/controls';
 import * as C from '../../game/constants';
 import { getEventColor, getEventIcon } from './chat-utils';
 
@@ -274,11 +275,11 @@ export function drawControlsHelp(ctx: CanvasRenderingContext2D) {
   const w = C.UI_CONTROLS_WIDTH;
 
   const controls = [
-    { label: C.UI_CONTROL_MOVE_LABEL, value: C.UI_CONTROL_MOVE_VALUE },
-    { label: C.UI_CONTROL_DASH_LABEL, value: C.UI_CONTROL_DASH_VALUE },
-    { label: C.UI_CONTROL_AIM_LABEL, value: C.UI_CONTROL_AIM_VALUE },
-    { label: C.UI_CONTROL_SHOOT_LABEL, value: C.UI_CONTROL_SHOOT_VALUE },
-    { label: C.UI_CONTROL_RELOAD_LABEL, value: C.UI_CONTROL_RELOAD_VALUE },
+    { label: 'MOVE', value: getMovementDisplayValue() },
+    { label: 'DASH', value: getControlDisplayValue('dash') },
+    { label: 'AIM', value: 'MOUSE' },
+    { label: 'SHOOT', value: getControlDisplayValue('shoot') },
+    { label: 'RELOAD', value: getControlDisplayValue('reload') },
   ];
 
   const panelH = lineH * (controls.length + 1) + 20;
