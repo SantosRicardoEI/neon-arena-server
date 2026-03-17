@@ -80,3 +80,13 @@ export const REAPER_PARTICLE_COUNT = 24;
 
 /** Void Reaper shockwave visual duration (ms) */
 export const REAPER_VORTEX_DURATION_MS = 800;
+
+/** Solar Archon boss visual constants */
+export const ARCHON_RING_COUNT = 3;
+export const ARCHON_SHARD_COUNT = 6;
+export const ARCHON_SHARD_ORBIT_RADIUS = 1.4;
+export const ARCHON_ROTATION_SPEED = 0.3;
+export const ARCHON_BEAM_COUNT = 12;
+export const ARCHON_BEAM_LENGTH = 2.2;
+export const ARCHON_CORONA_PARTICLE_COUNT = 20;
+export const ARCHON_FLARE_DURATION_MS = 900;
