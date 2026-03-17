@@ -98,7 +98,9 @@ const Index = () => {
     setRoomId(roomName);
     setGameMode("online");
     setScreen("game");
-  }, []);
+    audit.updatePlayer(playerName.trim() || "Player", selectedColor, selectedSkin);
+    audit.logEvent("game_start", { game_mode: "online", room_id: roomName });
+  }, [audit, playerName, selectedColor, selectedSkin]);
 
   const handleBackToMenu = useCallback(() => {
     setScreen("menu");
