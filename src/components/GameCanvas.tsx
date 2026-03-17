@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { GameEngine } from '@/game/engine';
 import { createInputState, setupInput } from '@/game/input';
 import { PlayerSkin } from '@/game/types';
+import { useState } from 'react';
+import DevSpawnPanel from '@/gameplay/dev/DevSpawnPanel';
+import type { DevSpawnCategory, DevSpawnOptionId } from '@/gameplay/dev/types';
 
 interface GameCanvasProps {
   playerId: string;
@@ -9,8 +12,9 @@ interface GameCanvasProps {
   roomId: string;
   playerColor: string;
   playerSkin: PlayerSkin;
-  mode: "solo" | "online";
+  mode: "solo" | "online" | "dev_test";
 }
+
 
 const GameCanvas = ({
   playerId,
@@ -22,6 +26,39 @@ const GameCanvas = ({
 }: GameCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<GameEngine | null>(null);
+
+  const [devSelectedCategory, setDevSelectedCategory] = useState<DevSpawnCategory>('enemy');
+  const [devSelectedOptionId, setDevSelectedOptionId] = useState<DevSpawnOptionId | null>('normal');
+
+    const handleSelectCategory = (category: DevSpawnCategory) => {
+    setDevSelectedCategory(category);
+    setDevSelectedOptionId(null);
+    engineRef.current?.setDevSpawnSelection(category, null);
+  };
+
+  const handleSelectOption = (category: DevSpawnCategory, optionId: DevSpawnOptionId) => {
+    setDevSelectedCategory(category);
+    setDevSelectedOptionId(optionId);
+    engineRef.current?.setDevSpawnSelection(category, optionId);
+  };
+
+  const handleClearDevWorld = () => {
+    engineRef.current?.clearDevWorld();
+  };
+
+  useEffect(() => {
+  if (mode !== 'dev_test') return;
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key !== 'Escape') return;
+
+    setDevSelectedOptionId(null);
+    engineRef.current?.clearDevSpawnSelection();
+  };
+
+  window.addEventListener('keydown', onKeyDown);
+  return () => window.removeEventListener('keydown', onKeyDown);
+}, [mode]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -51,6 +88,9 @@ const GameCanvas = ({
     );
 
     engineRef.current = engine;
+    if (mode === 'dev_test') {
+      engine.setDevSpawnSelection(devSelectedCategory, devSelectedOptionId);
+    }
     engine.start();
 
     const handleUnload = () => {
@@ -69,12 +109,26 @@ const GameCanvas = ({
   }, [playerId, playerName, roomId, playerColor, playerSkin, mode]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="block w-full h-full cursor-crosshair"
-      style={{ background: 'hsl(240, 10%, 4%)' }}
-    />
+    <div className="relative w-full h-full">
+      {mode === 'dev_test' && (
+        <DevSpawnPanel
+          selectedCategory={devSelectedCategory}
+          selectedOptionId={devSelectedOptionId}
+          onSelectCategory={handleSelectCategory}
+          onSelectOption={handleSelectOption}
+          onClear={handleClearDevWorld}
+        />
+      )}
+
+      <canvas
+        ref={canvasRef}
+        className="block w-full h-full cursor-crosshair"
+        style={{ background: 'hsl(240, 10%, 4%)' }}
+      />
+    </div>
   );
 };
+
+
 
 export default GameCanvas;

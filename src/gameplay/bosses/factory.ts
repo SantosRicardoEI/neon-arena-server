@@ -1,34 +1,40 @@
-import type { Boss } from '../../shared/types';
+import type { Boss, Vec2 } from '../../shared/types';
 import type { BossDefinition } from './registry';
 import * as C from '../../game/constants';
 import { genId } from '../core/id';
 
-export function createBoss(def: BossDefinition): Boss {
-  const edge = Math.floor(Math.random() * 4);
+export function createBoss(def: BossDefinition, spawnPos?: Vec2): Boss {
   let x: number;
   let y: number;
 
-  switch (edge) {
-    case 0:
-      x = Math.random() * C.WORLD_WIDTH;
-      y = 0;
-      break;
-    case 1:
-      x = C.WORLD_WIDTH;
-      y = Math.random() * C.WORLD_HEIGHT;
-      break;
-    case 2:
-      x = Math.random() * C.WORLD_WIDTH;
-      y = C.WORLD_HEIGHT;
-      break;
-    default:
-      x = 0;
-      y = Math.random() * C.WORLD_HEIGHT;
-      break;
+  if (spawnPos) {
+    x = spawnPos.x;
+    y = spawnPos.y;
+  } else {
+    const edge = Math.floor(Math.random() * 4);
+
+    switch (edge) {
+      case 0:
+        x = Math.random() * C.WORLD_WIDTH;
+        y = 0;
+        break;
+      case 1:
+        x = C.WORLD_WIDTH;
+        y = Math.random() * C.WORLD_HEIGHT;
+        break;
+      case 2:
+        x = Math.random() * C.WORLD_WIDTH;
+        y = C.WORLD_HEIGHT;
+        break;
+      default:
+        x = 0;
+        y = Math.random() * C.WORLD_HEIGHT;
+        break;
+    }
   }
 
   return {
-    id: genId(),
+    id: crypto.randomUUID(), // ou genId() se usas isso
     definitionId: def.id,
     name: def.name,
     pos: { x, y },

@@ -16,6 +16,13 @@ export const UI_CONTROLS_LINE_HEIGHT = 20;
 export const UI_CONTROLS_PADDING_X = 12;
 export const UI_CONTROLS_PADDING_Y = 12;
 
+/** Painel dev spawn — margem esquerda (px) */
+export const UI_DEV_PANEL_LEFT = 16;
+/** Painel dev spawn — margem superior (px) */
+export const UI_DEV_PANEL_TOP = 200;
+/** Painel dev spawn — largura (px) */
+export const UI_DEV_PANEL_WIDTH = 288;
+
 // Controls help text
 export const UI_CONTROLS_TITLE = "CONTROLS";
 export const UI_CONTROL_MOVE_LABEL = "MOVE";
@@ -40,8 +47,8 @@ export const UI_CONTROLS_SEPARATOR_COLOR = "hsla(240, 10%, 50%, 0.3)";
 /** Painel de stats — margem esquerda (px) */
 export const UI_STATS_X = 20;
 /** Painel de stats — margem superior (px) */
-export const UI_STATS_Y = 60;
-export const UI_STATS_GAP_ABOVE_BOTTOM_UI = 130;
+export const UI_STATS_Y = 10;
+export const UI_STATS_GAP_ABOVE_BOTTOM_UI = 100;
 
 /** Texto do score — margem direita (px) */
 export const UI_SCORE_RIGHT = 20;

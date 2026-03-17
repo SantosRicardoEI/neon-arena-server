@@ -9,10 +9,9 @@ import type {
 import * as C from '../../game/constants';
 import { genId } from '../core/id';
 
-export function createCollectible(): Collectible {
-  return {
+export function createCollectible(spawnPos?: Vec2): Collectible {  return {
     id: genId(),
-    pos: {
+    pos: spawnPos ?? {
       x: 100 + Math.random() * (C.WORLD_WIDTH - 200),
       y: 100 + Math.random() * (C.WORLD_HEIGHT - 200),
     },
@@ -33,10 +32,9 @@ export function createDroppedPoints(pos: Vec2, value: number, now: number): Drop
   };
 }
 
-export function createHealthPickup(): HealthPickup {
-  return {
+export function createHealthPickup(spawnPos?: Vec2): HealthPickup {  return {
     id: genId(),
-    pos: {
+    pos: spawnPos ?? {
       x: 100 + Math.random() * (C.WORLD_WIDTH - 200),
       y: 100 + Math.random() * (C.WORLD_HEIGHT - 200),
     },
@@ -49,11 +47,10 @@ function pickPowerUpType(): PowerUpType {
   return types[Math.floor(Math.random() * types.length)];
 }
 
-export function createPowerUpItem(forceType?: PowerUpType): PowerUpItem {
-  return {
+export function createPowerUpItem(forceType?: PowerUpType, spawnPos?: Vec2): PowerUpItem {  return {
     id: genId(),
     type: forceType ?? pickPowerUpType(),
-    pos: {
+    pos: spawnPos ?? {
       x: 100 + Math.random() * (C.WORLD_WIDTH - 200),
       y: 100 + Math.random() * (C.WORLD_HEIGHT - 200),
     },

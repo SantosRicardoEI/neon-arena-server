@@ -19,12 +19,27 @@ import { createBoss } from '../gameplay/bosses/factory';
 import { createEnemy } from '../gameplay/enemies/factory';
 import { BOSS_SCHEDULE } from '../gameplay/bosses/schedule';
 
+export interface CreateGameStateOptions {
+  seedInitialEnemies?: boolean;
+  seedInitialCollectibles?: boolean;
+}
+
 // =============================================
 // Game State Factory
 // =============================================
 
 /** Create a fresh GameState for a new room */
-export function createGameState(roomName: string, now: number): GameState {
+/** Create a fresh GameState for a new room */
+export function createGameState(
+  roomName: string,
+  now: number,
+  options: CreateGameStateOptions = {},
+): GameState {
+  const {
+    seedInitialEnemies = true,
+    seedInitialCollectibles = true,
+  } = options;
+
   const state: GameState = {
     players: new Map(),
     enemies: [],
@@ -52,11 +67,16 @@ export function createGameState(roomName: string, now: number): GameState {
     bossScheduleTriggered: new Set(),
   };
 
-  for (let i = 0; i < C.INITIAL_ENEMIES; i++) {
-    state.enemies.push(createEnemy());
+  if (seedInitialEnemies) {
+    for (let i = 0; i < C.INITIAL_ENEMIES; i++) {
+      state.enemies.push(createEnemy());
+    }
   }
-  for (let i = 0; i < C.INITIAL_COLLECTIBLES; i++) {
-    state.collectibles.push(createCollectible());
+
+  if (seedInitialCollectibles) {
+    for (let i = 0; i < C.INITIAL_COLLECTIBLES; i++) {
+      state.collectibles.push(createCollectible());
+    }
   }
 
   return state;

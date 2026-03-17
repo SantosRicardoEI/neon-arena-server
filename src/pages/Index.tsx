@@ -12,7 +12,7 @@ import { useSitePresence } from "@/hooks/useSitePresence";
 import { usePlayerAudit } from "@/hooks/usePlayerAudit";
 import { Users, Monitor, Gamepad2 } from "lucide-react";
 
-type GameMode = "solo" | "online";
+type GameMode = "solo" | "online" | "dev_test";
 
 function generatePlayerId(): string {
   return "p_" + Math.random().toString(36).slice(2, 10);
@@ -109,6 +109,16 @@ const Index = () => {
     setScreen("menu");
     setGameMode(null);
   }, [audit, gameMode, roomId]);
+
+  const handleDevTestStart = useCallback(() => {
+    const trimmedName = playerName.trim() || "Player";
+    setPlayerName(trimmedName);
+    setRoomId("dev_test");
+    setGameMode("dev_test");
+    setScreen("game");
+    audit.updatePlayer(trimmedName, selectedColor, selectedSkin);
+    audit.logEvent("game_start", { game_mode: "dev_test" });
+}, [playerName, audit, selectedColor, selectedSkin]);
 
   const handleSoloStart = useCallback(() => {
   const trimmedName = playerName.trim() || "Player";
@@ -304,6 +314,13 @@ const handleLobbyClick = useCallback(() => {
           >
             PLAY SOLO
           </button>
+
+          <button
+            onClick={handleDevTestStart}
+            className="bg-primary/80 text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
+          >
+            DEV TEST
+        </button>
           
           <button
             onClick={handleLobbyClick}

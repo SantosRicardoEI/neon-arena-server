@@ -231,6 +231,13 @@ export function updateClientPrediction(
   return events;
 }
 
+export interface SimulationOptions {
+  disableAutoEnemySpawns?: boolean;
+  disableAutoHealthPickupSpawns?: boolean;
+  disableAutoPowerUpSpawns?: boolean;
+  disableAutoCollectibleRespawns?: boolean;
+}
+
 /**
  * Simulação autoritária.
  * Trata spawn periódico, inimigos, bosses, projéteis e pickups.
@@ -240,6 +247,7 @@ export function updateAuthoritative(
   state: GameState,
   dt: number,
   now: number,
+  options: SimulationOptions = {},
 ): SimulationEvents {
   const events: SimulationEvents = {
     enemiesKilled: [],
@@ -253,11 +261,14 @@ export function updateAuthoritative(
   };
 
   // Periodic enemy spawning (scaled by player count)
+// Periodic enemy spawning (scaled by player count)
+if (!options.disableAutoEnemySpawns) {
   const playerCount = state.players.size;
   const spawnInterval = Math.max(
     C.ENEMY_SPAWN_INTERVAL_MIN_MS,
     C.ENEMY_SPAWN_INTERVAL_BASE_MS / (1 + (playerCount - 1) * C.ENEMY_SPAWN_INTERVAL_PLAYER_FACTOR)
   );
+
   if (state.enemies.length < C.ENEMY_MAX_COUNT && now - state.lastEnemySpawn > spawnInterval) {
     const batch = C.ENEMY_SPAWN_BATCH_BASE + (playerCount - 1) * C.ENEMY_SPAWN_BATCH_PER_PLAYER;
     for (let i = 0; i < batch && state.enemies.length < C.ENEMY_MAX_COUNT; i++) {
@@ -265,18 +276,29 @@ export function updateAuthoritative(
     }
     state.lastEnemySpawn = now;
   }
+}
 
   // Spawn health pickups periodically
-  if (state.healthPickups.length < C.MAX_HEALTH_PICKUPS && now - state.lastHealthPickupSpawn > C.HEALTH_PICKUP_SPAWN_INTERVAL_MS) {
-    state.healthPickups.push(createHealthPickup());
-    state.lastHealthPickupSpawn = now;
+  if (!options.disableAutoHealthPickupSpawns) {
+    if (
+      state.healthPickups.length < C.MAX_HEALTH_PICKUPS &&
+      now - state.lastHealthPickupSpawn > C.HEALTH_PICKUP_SPAWN_INTERVAL_MS
+    ) {
+      state.healthPickups.push(createHealthPickup());
+      state.lastHealthPickupSpawn = now;
+    }
   }
 
   // Spawn power-ups periodically
-  if (state.powerUpItems.length < C.POWERUP_MAX_COUNT && now - state.lastPowerUpSpawn > C.POWERUP_SPAWN_INTERVAL_MS) {
-    state.powerUpItems.push(createPowerUpItem());
-    state.lastPowerUpSpawn = now;
-  }
+  if (!options.disableAutoPowerUpSpawns) {
+    if (
+      state.powerUpItems.length < C.POWERUP_MAX_COUNT &&
+      now - state.lastPowerUpSpawn > C.POWERUP_SPAWN_INTERVAL_MS
+    ) {
+      state.powerUpItems.push(createPowerUpItem());
+      state.lastPowerUpSpawn = now;
+    }
+}
 
   // Remove expired dropped points
   state.droppedPoints = state.droppedPoints.filter(dp => now - dp.createdAt < C.DROPPED_POINTS_LIFETIME_MS);
@@ -345,6 +367,7 @@ export function updateGameState(
   dt: number,
   now: number,
   isHost: boolean,
+  options: SimulationOptions = {},
 ): SimulationEvents {
   const localPlayer = state.players.get(localPlayerId);
   if (!localPlayer) {
@@ -364,8 +387,7 @@ export function updateGameState(
         applyPlayerMovement(p, dt, now, C.WORLD_WIDTH, C.WORLD_HEIGHT);
       }
     }
-    const events = updateAuthoritative(state, dt, now);
-    events.reloadCompletedPlayerIds.push(...common.reloadCompletedPlayerIds);
+    const events = updateAuthoritative(state, dt, now, options);    events.reloadCompletedPlayerIds.push(...common.reloadCompletedPlayerIds);
     return events;
   } else {
     const events = updateClientPrediction(state, localPlayer, dt, now);

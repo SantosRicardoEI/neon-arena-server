@@ -1,4 +1,4 @@
-import type { Enemy, EnemyType } from '../../shared/types';
+import type { Enemy, EnemyType, Vec2 } from '../../shared/types';
 import * as C from '../../game/constants';
 import { genId } from '../core/id';
 import { getEnemyConfig } from './registry';
@@ -28,31 +28,38 @@ function getSpawnWeights(): Record<EnemyType, number> {
   };
 }
 
-export function createEnemy(forceType?: EnemyType): Enemy {
+export function createEnemy(forceType?: EnemyType, spawnPos?: Vec2): Enemy {
   const type = forceType ?? pickEnemyType();
   const cfg = getEnemyConfig(type);
 
   const edge = Math.floor(Math.random() * 4);
-  let x: number;
+    let x: number;
   let y: number;
 
-  switch (edge) {
-    case 0:
-      x = Math.random() * C.WORLD_WIDTH;
-      y = 0;
-      break;
-    case 1:
-      x = C.WORLD_WIDTH;
-      y = Math.random() * C.WORLD_HEIGHT;
-      break;
-    case 2:
-      x = Math.random() * C.WORLD_WIDTH;
-      y = C.WORLD_HEIGHT;
-      break;
-    default:
-      x = 0;
-      y = Math.random() * C.WORLD_HEIGHT;
-      break;
+  if (spawnPos) {
+    x = spawnPos.x;
+    y = spawnPos.y;
+  } else {
+    const edge = Math.floor(Math.random() * 4);
+
+    switch (edge) {
+      case 0:
+        x = Math.random() * C.WORLD_WIDTH;
+        y = 0;
+        break;
+      case 1:
+        x = C.WORLD_WIDTH;
+        y = Math.random() * C.WORLD_HEIGHT;
+        break;
+      case 2:
+        x = Math.random() * C.WORLD_WIDTH;
+        y = C.WORLD_HEIGHT;
+        break;
+      default:
+        x = 0;
+        y = Math.random() * C.WORLD_HEIGHT;
+        break;
+    }
   }
 
   const angle = Math.random() * Math.PI * 2;

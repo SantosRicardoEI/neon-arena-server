@@ -16,6 +16,8 @@
  *   enviar input, prever localmente alguns movimentos e aplicar snapshots recebidos.
  */
 
+import type { DevSpawnCategory, DevSpawnOptionId } from '../gameplay/dev/types';
+import { spawnDevEntity, clearDevSpawnedEntities } from '../gameplay/dev/spawn-actions';
 import {
   GameState,
   InputState,
@@ -70,10 +72,14 @@ export class GameEngine {
   private lastRespawnRequestAt = 0;
   private scoreSubmitted = false;
   private lastKnownBossShockwaves = new Map<string, number>();
-  private gameMode: "solo" | "online";
+  private gameMode: "solo" | "online" | "dev_test";
   private inputBuffer = new InputBuffer();
   private socket: GameSocket | null = null;
   private pingIntervalId: number | null = null;
+  private devSelectedCategory: DevSpawnCategory = 'enemy';
+  private devSelectedOptionId: DevSpawnOptionId | null = null;
+  private previousMouseDown = false;
+  private devSpawnClickConsumed = false;
 
 /**
  * Cria uma nova instância do motor de jogo.
@@ -90,7 +96,7 @@ export class GameEngine {
   roomId: string,
   playerColor: string,
   playerSkin: PlayerSkin,
-  gameMode: "solo" | "online"
+  gameMode: "solo" | "online" | "dev_test"
 ) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
@@ -98,12 +104,15 @@ export class GameEngine {
     this.localPlayerId = playerId;
     this.gameMode = gameMode;
 
-    this.state = createGameState(roomId, performance.now());
+    this.state = createGameState(roomId, performance.now(), {
+      seedInitialEnemies: !this.isDevTest,
+      seedInitialCollectibles: !this.isDevTest,
+    });
 
-    if (this.isSolo) {
-      this.initSolo(playerId, playerName, playerColor, playerSkin);
-    } else {
-      this.initOnline(roomId, playerName, playerColor, playerSkin);
+    if (this.isLocalMode) {
+        this.initLocal(playerId, playerName, playerColor, playerSkin);
+      } else {
+        this.initOnline(roomId, playerName, playerColor, playerSkin);
     }
   }
 
@@ -113,7 +122,7 @@ export class GameEngine {
  * Cria o jogador local no estado do jogo e marca este cliente
  * como autoridade local da sessão.
  */
-  private initSolo(
+  private initLocal(
   playerId: string,
   playerName: string,
   playerColor: string,
@@ -277,6 +286,22 @@ private setupSocketHandlers(): void {
     }));
   }
 
+  /**
+ * Mantém o estado da ronda congelado no modo dev_test.
+ *
+ * Isto impede:
+ * - avanço visual do timer;
+ * - round over;
+ * - countdown de restart.
+ */
+private keepDevTestRoundFrozen(now: number): void {
+  if (!this.isDevTest) return;
+
+  this.state.roundStartTime = now;
+  this.state.roundOver = false;
+  this.state.restartCountdownStart = 0;
+}
+
 /**
  * Loop principal do jogo, executado a cada frame.
  *
@@ -297,37 +322,41 @@ private setupSocketHandlers(): void {
     const dt = Math.min((timestamp - this.lastTime) / 1000, 0.05);
     this.lastTime = timestamp;
 
-    if (this.isSolo) {
-      const { roundJustEnded, shouldRestart } = checkRoundTimer(this.state, timestamp);
-      if (roundJustEnded) {
-        this.addSystemEvent('event_host', 'Round over! Final scores:');
-        this.submitScores();
-      }
-      if (shouldRestart) {
-        resetRound(this.state, timestamp);
-        this.addSystemEvent('event_host', 'New round started!');
-        this.scoreSubmitted = false;
-      }
+    this.keepDevTestRoundFrozen(timestamp);
 
-      if (!this.state.roundOver) {
-        const bossEvents = updateBossSchedule(this.state, timestamp);
-        for (const evt of bossEvents) {
-          if (evt.type === 'warning') {
-            this.addSystemEvent('event_boss', `⚠ ${evt.bossName} approaches!`);
-          } else if (evt.type === 'spawn') {
-            this.addSystemEvent('event_boss', `👹 ${evt.bossName} has arrived!`);
+      if (this.isSolo && !this.isDevTest) {
+        const { roundJustEnded, shouldRestart } = checkRoundTimer(this.state, timestamp);
+        if (roundJustEnded) {
+          this.addSystemEvent('event_host', 'Round over! Final scores:');
+          this.submitScores();
+        }
+        if (shouldRestart) {
+          resetRound(this.state, timestamp);
+          this.addSystemEvent('event_host', 'New round started!');
+          this.scoreSubmitted = false;
+        }
+
+        if (!this.state.roundOver) {
+          const bossEvents = updateBossSchedule(this.state, timestamp);
+          for (const evt of bossEvents) {
+            if (evt.type === 'warning') {
+              this.addSystemEvent('event_boss', `⚠ ${evt.bossName} approaches!`);
+            } else if (evt.type === 'spawn') {
+              this.addSystemEvent('event_boss', `👹 ${evt.bossName} has arrived!`);
+            }
           }
         }
       }
-    }
 
     // Don't process gameplay input when round is over
-    if (!this.chatting && !this.state.roundOver) this.processInput(dt, timestamp);
+    if (!this.chatting && (!this.state.roundOver || this.isDevTest)) {
+      this.processInput(dt, timestamp);
+    }    
     this.interpolateRemotePlayers(dt);
     this.interpolateEnemies(dt);
 
-    const events = this.isSolo
-      ? this.runSoloFrame(dt, timestamp)
+    const events = this.isLocalMode
+      ? this.runLocalFrame(dt, timestamp)
       : this.runOnlineFrame(dt, timestamp);
 
     if (events.enemiesKilled.length > 0) { console.log('[SFX] enemyDeath'); playEnemyDeath(); }
@@ -390,9 +419,25 @@ private setupSocketHandlers(): void {
     
     cleanupExpiredEntities(this.state, timestamp);
 
+    if (!this.input.mouseDown) {
+      this.devSpawnClickConsumed = false;
+    }
+
     render(this.ctx, this.state, this.localPlayerId, this.canvas.width, this.canvas.height, timestamp, this.chatting, this.chatInput);
 
 
+    render(
+      this.ctx,
+      this.state,
+      this.localPlayerId,
+      this.canvas.width,
+      this.canvas.height,
+      timestamp,
+      this.chatting,
+      this.chatInput
+    );
+
+    this.previousMouseDown = this.input.mouseDown;
     this.animFrameId = requestAnimationFrame(this.loop);
   };
 
@@ -403,28 +448,36 @@ private setupSocketHandlers(): void {
  * corre a simulação completa do jogo e devolve os eventos produzidos
  * nessa atualização.
  */
-    private runSoloFrame(dt: number, timestamp: number): SimulationEvents {
-    const emptyEvents: SimulationEvents = {
-      enemiesKilled: [],
-      collectiblesGathered: [],
-      playersHit: [],
-      droppedPointsGathered: [],
-      healthPickupsGathered: [],
-      powerUpsGathered: [],
-      reloadCompletedPlayerIds: [],
-      playerKills: [],
-    };
+private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
+  const emptyEvents: SimulationEvents = {
+    enemiesKilled: [],
+    collectiblesGathered: [],
+    playersHit: [],
+    droppedPointsGathered: [],
+    healthPickupsGathered: [],
+    powerUpsGathered: [],
+    reloadCompletedPlayerIds: [],
+    playerKills: [],
+  };
 
-    if (this.state.roundOver) return emptyEvents;
-
-    return updateGameState(
-      this.state,
-      this.localPlayerId,
-      dt,
-      timestamp,
-      true,
-    );
+  if (this.isSolo && this.state.roundOver) {
+    return emptyEvents;
   }
+
+  return updateGameState(
+    this.state,
+    this.localPlayerId,
+    dt,
+    timestamp,
+    true,
+    {
+      disableAutoEnemySpawns: this.isDevTest,
+      disableAutoHealthPickupSpawns: this.isDevTest,
+      disableAutoPowerUpSpawns: this.isDevTest,
+      disableAutoCollectibleRespawns: this.isDevTest,
+    },
+  );
+}
 
 /**
  * Executa a frame em modo online.
@@ -798,6 +851,11 @@ private setupSocketHandlers(): void {
       return;
     }
 
+    if (this.handleDevSpawnClick(player, now)) {
+      this.previousMouseDown = this.input.mouseDown;
+      return;
+    }
+
  
     let vx = 0, vy = 0;
     if (this.input.keys.has('w') || this.input.keys.has('arrowup')) vy -= 1;
@@ -822,7 +880,7 @@ private setupSocketHandlers(): void {
       reload: this.input.keys.has('r'),
     });
 
-    if (!this.isSolo) {
+    if (!this.isLocalMode) {
       this.sendOnlineInput(now, moveDir, player.aimAngle);
     }
 
@@ -840,7 +898,7 @@ private setupSocketHandlers(): void {
  * diretamente no estado do jogo.
  */
   private handleRespawnRequest(playerId: string) {
-    if (!this.isSolo) return;
+    if (!this.isLocalMode) return;
     const success = respawnPlayer(this.state, playerId, performance.now());
     if (success) {
       const player = this.state.players.get(playerId);
@@ -876,6 +934,12 @@ private setupSocketHandlers(): void {
  */
   private onChatKeyDown = (e: KeyboardEvent) => {
     if (!this.running) return;
+
+    if (e.key === 'Escape' && !this.chatting && this.isDevTest && this.devSelectedOptionId) {
+      e.preventDefault();
+      this.clearDevSpawnSelection();
+      return;
+    }
 
     if (e.key === 'Enter' && !this.chatting) {
       e.preventDefault();
@@ -1000,13 +1064,13 @@ private setupSocketHandlers(): void {
   ) {
     this.lastRespawnRequestAt = now;
 
-    if (this.isSolo) {
-      this.handleRespawnRequest(this.localPlayerId);
-    } else {
-      this.socket?.send({
-        type: "client:respawn",
-      });
-    }
+    if (this.isLocalMode) {
+        this.handleRespawnRequest(this.localPlayerId);
+      } else {
+        this.socket?.send({
+          type: "client:respawn",
+        });
+      }
   }
 
   return true;
@@ -1052,7 +1116,7 @@ private setupSocketHandlers(): void {
   dt: number,
   now: number,
 ): void {
-  if (this.isSolo) {
+  if (this.isLocalMode) {
     const hasSpeed = playerHasPowerUp(player, 'speed', now);
     const vel = computeMovementVelocity(moveDir, player.score, hasSpeed);
     player.vel.x = vel.x;
@@ -1097,6 +1161,10 @@ private setupSocketHandlers(): void {
  * - iniciar reload automático quando o carregador esvazia.
  */
 private handleShootInput(player: Player, now: number): void {
+  if (this.devSpawnClickConsumed) {
+    return;
+  }
+
   let shootCooldown = getShootCooldown(player.score);
   if (playerHasPowerUp(player, 'rapid_fire', now)) {
     shootCooldown *= C.POWERUP_RAPID_FIRE_COOLDOWN_MULTIPLIER;
@@ -1121,7 +1189,7 @@ private handleShootInput(player: Player, now: number): void {
   player.lastShot = now;
   player.ammo--;
 
-  if (this.isSolo) {
+  if (this.isLocalMode) {
     const proj = createProjectile(player, player.aimAngle, now);
     this.state.projectiles.push(proj);
   } else {
@@ -1159,7 +1227,7 @@ private handleReloadInput(player: Player, now: number): void {
 
   const reloadTime = getReloadTime(player.score);
 
-  if (this.isSolo) {
+  if (this.isLocalMode) {
     player.reloadingUntil = now + reloadTime;
   } else {
     this.socket?.send({
@@ -1168,14 +1236,70 @@ private handleReloadInput(player: Player, now: number): void {
   }
 }
 
+setDevSpawnSelection(
+  category: DevSpawnCategory,
+  optionId: DevSpawnOptionId | null,
+): void {
+  this.devSelectedCategory = category;
+  this.devSelectedOptionId = optionId;
+}
+
+clearDevWorld(): void {
+  if (!this.isDevTest) return;
+  clearDevSpawnedEntities(this.state);
+}
+
+getDevSelectedOptionId(): DevSpawnOptionId | null {
+  return this.devSelectedOptionId;
+}
+
+private getMouseWorldPosition(player: Player): Vec2 {
+  const camX = player.pos.x - this.canvas.width / 2;
+  const camY = player.pos.y - this.canvas.height / 2;
+
+  return {
+    x: this.input.mouseX + camX,
+    y: this.input.mouseY + camY,
+  };
+}
+
+private handleDevSpawnClick(player: Player, now: number): boolean {
+  if (!this.isDevTest) return false;
+  if (!this.devSelectedOptionId) return false;
+
+  const justPressed = this.input.mouseDown && !this.previousMouseDown;
+  if (!justPressed) return false;
+
+  const worldPos = this.getMouseWorldPosition(player);
+
+  spawnDevEntity(this.state, this.devSelectedOptionId, worldPos, now);
+  this.devSpawnClickConsumed = true;
+
+  return true;
+}
+
 /**
  * Indica se o motor está a correr em modo solo.
  *
  * É usado para distinguir autoridade local de simulação
  * face ao modo online com servidor autoritário.
  */
-  private get isSolo(): boolean {
-    return this.gameMode === "solo";
-  }
+private get isSolo(): boolean {
+  return this.gameMode === "solo";
+}
+
+private get isDevTest(): boolean {
+  return this.gameMode === "dev_test";
+}
+
+private get isLocalMode(): boolean {
+  return this.gameMode === "solo" || this.gameMode === "dev_test";
+}
+
+clearDevSpawnSelection(): void {
+  if (!this.isDevTest) return;
+
+  this.devSelectedOptionId = null;
+}
 
 }
