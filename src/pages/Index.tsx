@@ -80,6 +80,8 @@ const Index = () => {
     roomId: screen === "game" ? roomId : null,
   });
 
+  const audit = usePlayerAudit(tabId);
+
   useEffect(() => {
     if (screen !== "game") {
       music.play("menu");
