@@ -579,6 +579,342 @@ export function drawVoidReaper(
   drawBossOverhead(ctx, boss);
 }
 
+/* ============================================================
+ *  SOLAR ARCHON — Geometric sun-god mandala with orbiting
+ *  crystal shards, radiating energy beams, and solar flare
+ *  shockwave. Warm gold/white palette, hexagonal symmetry.
+ * ============================================================ */
+export function drawSolarArchon(
+  ctx: CanvasRenderingContext2D,
+  boss: Boss,
+  def: BossDefinition,
+  now: number,
+) {
+  const hs = boss.size / 2;
+  const timeSec = now / 1000;
+  const rotation = timeSec * C.ARCHON_ROTATION_SPEED;
+  const breathe = 1 + 0.04 * Math.sin(timeSec * 1.8);
+  const healthFrac = boss.health / boss.maxHealth;
+
+  ctx.save();
+  ctx.translate(boss.pos.x, boss.pos.y);
+
+  // --- Solar Flare Shockwave ---
+  if (def.shockwaveRadius > 0) {
+    const sinceLast = now - boss.lastShockwave;
+    const cooldownFrac = Math.min(sinceLast / def.shockwaveCooldownMs, 1);
+
+    // Charge-up: pulsing golden ring that shrinks
+    if (cooldownFrac > 0.65 && cooldownFrac < 1) {
+      const charge = (cooldownFrac - 0.65) / 0.35;
+      const pulseR = def.shockwaveTriggerRange * (1 - charge * 0.4);
+      const alpha = 0.1 + 0.2 * charge * Math.abs(Math.sin(now * 0.018));
+      ctx.beginPath();
+      ctx.arc(0, 0, pulseR, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(40, 100%, 65%, ${alpha})`;
+      ctx.lineWidth = 2 + charge * 2;
+      ctx.setLineDash([10, 5]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Active solar flare
+    if (sinceLast < C.ARCHON_FLARE_DURATION_MS) {
+      const progress = sinceLast / C.ARCHON_FLARE_DURATION_MS;
+      const waveRadius = def.shockwaveRadius * progress;
+      const waveAlpha = 0.8 * (1 - progress);
+
+      // Inner fire gradient
+      const flareGrad = ctx.createRadialGradient(0, 0, waveRadius * 0.2, 0, 0, waveRadius);
+      flareGrad.addColorStop(0, `hsla(50, 100%, 90%, ${waveAlpha * 0.4})`);
+      flareGrad.addColorStop(0.4, `hsla(35, 100%, 60%, ${waveAlpha * 0.5})`);
+      flareGrad.addColorStop(0.8, `hsla(15, 100%, 45%, ${waveAlpha * 0.3})`);
+      flareGrad.addColorStop(1, `hsla(0, 100%, 30%, 0)`);
+      ctx.fillStyle = flareGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, waveRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Expanding ring edge
+      ctx.beginPath();
+      ctx.arc(0, 0, waveRadius, 0, Math.PI * 2);
+      ctx.strokeStyle = `hsla(45, 100%, 85%, ${waveAlpha})`;
+      ctx.lineWidth = 3 * (1 - progress) + 1;
+      ctx.stroke();
+
+      // Radial flame tongues
+      for (let i = 0; i < 8; i++) {
+        const flameA = rotation * 3 + (i / 8) * Math.PI * 2;
+        const flameR = waveRadius * (0.7 + 0.3 * Math.sin(now * 0.01 + i * 2));
+        const fx = Math.cos(flameA) * flameR;
+        const fy = Math.sin(flameA) * flameR;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(fx, fy);
+        ctx.strokeStyle = `hsla(30, 100%, 70%, ${waveAlpha * 0.3})`;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+  }
+
+  // --- Corona (outer glow) ---
+  const coronaSize = hs * 3.2 * breathe;
+  const coronaGrad = ctx.createRadialGradient(0, 0, hs * 0.4, 0, 0, coronaSize);
+  coronaGrad.addColorStop(0, 'hsla(45, 100%, 70%, 0.12)');
+  coronaGrad.addColorStop(0.3, 'hsla(35, 100%, 55%, 0.06)');
+  coronaGrad.addColorStop(0.6, 'hsla(20, 80%, 40%, 0.03)');
+  coronaGrad.addColorStop(1, 'hsla(10, 60%, 20%, 0)');
+  ctx.fillStyle = coronaGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, coronaSize, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Radiating Energy Beams ---
+  const beamCount = C.ARCHON_BEAM_COUNT;
+  const beamLen = hs * C.ARCHON_BEAM_LENGTH;
+  for (let i = 0; i < beamCount; i++) {
+    const beamAngle = rotation * 0.5 + (i / beamCount) * Math.PI * 2;
+    const flicker = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(timeSec * 3.5 + i * 1.7));
+    const bLen = beamLen * (0.6 + 0.4 * Math.sin(timeSec * 2 + i * 0.9));
+
+    const bx1 = Math.cos(beamAngle) * hs * 0.6;
+    const by1 = Math.sin(beamAngle) * hs * 0.6;
+    const bx2 = Math.cos(beamAngle) * (hs * 0.6 + bLen);
+    const by2 = Math.sin(beamAngle) * (hs * 0.6 + bLen);
+
+    const beamGrad = ctx.createLinearGradient(bx1, by1, bx2, by2);
+    beamGrad.addColorStop(0, `hsla(45, 100%, 80%, ${0.4 * flicker})`);
+    beamGrad.addColorStop(1, `hsla(40, 100%, 60%, 0)`);
+    ctx.beginPath();
+    ctx.moveTo(bx1, by1);
+    ctx.lineTo(bx2, by2);
+    ctx.strokeStyle = beamGrad;
+    ctx.lineWidth = 2.5 - (i % 3) * 0.5;
+    ctx.lineCap = 'round';
+    ctx.stroke();
+  }
+
+  // --- Orbiting Crystal Shards ---
+  const shardCount = C.ARCHON_SHARD_COUNT;
+  const orbitR = hs * C.ARCHON_SHARD_ORBIT_RADIUS;
+  for (let i = 0; i < shardCount; i++) {
+    const shardAngle = -rotation * 1.8 + (i / shardCount) * Math.PI * 2;
+    const wobble = Math.sin(timeSec * 2.5 + i * 1.4) * 8;
+    const sx = Math.cos(shardAngle) * (orbitR + wobble);
+    const sy = Math.sin(shardAngle) * (orbitR + wobble);
+    const shardRot = rotation * 3 + i * Math.PI / 3;
+    const shardSize = 8 + 3 * Math.sin(timeSec * 4 + i);
+
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.rotate(shardRot);
+
+    // Diamond shape
+    ctx.beginPath();
+    ctx.moveTo(0, -shardSize);
+    ctx.lineTo(shardSize * 0.5, 0);
+    ctx.lineTo(0, shardSize);
+    ctx.lineTo(-shardSize * 0.5, 0);
+    ctx.closePath();
+
+    const shardGrad = ctx.createLinearGradient(0, -shardSize, 0, shardSize);
+    shardGrad.addColorStop(0, 'hsla(50, 100%, 90%, 0.9)');
+    shardGrad.addColorStop(0.5, 'hsla(40, 100%, 70%, 0.8)');
+    shardGrad.addColorStop(1, 'hsla(30, 90%, 50%, 0.6)');
+    ctx.fillStyle = shardGrad;
+    ctx.fill();
+
+    ctx.strokeStyle = 'hsla(45, 100%, 95%, 0.5)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Shard glow
+    const glowA = 0.3 + 0.3 * Math.sin(timeSec * 5 + i * 2);
+    ctx.shadowColor = `hsla(45, 100%, 80%, ${glowA})`;
+    ctx.shadowBlur = 10;
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    ctx.restore();
+  }
+
+  // --- Corona Particles ---
+  const pCount = C.ARCHON_CORONA_PARTICLE_COUNT;
+  for (let i = 0; i < pCount; i++) {
+    const pAngle = timeSec * 0.6 + (i / pCount) * Math.PI * 2;
+    const pDist = hs * (1.0 + 0.8 * Math.sin(timeSec * 1.2 + i * 2.3));
+    const drift = Math.sin(timeSec * 3 + i * 1.1) * 6;
+    const px = Math.cos(pAngle) * pDist + drift;
+    const py = Math.sin(pAngle) * pDist;
+    const pSize = 1.5 + Math.sin(timeSec * 4 + i) * 1;
+    const pAlpha = 0.25 + 0.25 * Math.sin(timeSec * 5 + i * 0.7);
+    ctx.beginPath();
+    ctx.arc(px, py, pSize, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(40, 100%, 80%, ${pAlpha})`;
+    ctx.fill();
+  }
+
+  // --- Concentric Mandala Rings ---
+  const ringCount = C.ARCHON_RING_COUNT;
+  for (let r = 0; r < ringCount; r++) {
+    const ringR = hs * (0.35 + r * 0.15) * breathe;
+    const ringRot = rotation * (r % 2 === 0 ? 1 : -1) * (1 + r * 0.4);
+    const segments = 6 + r * 2;
+    const alpha = 0.35 - r * 0.08;
+
+    ctx.save();
+    ctx.rotate(ringRot);
+    ctx.beginPath();
+    for (let s = 0; s < segments; s++) {
+      const sa = (s / segments) * Math.PI * 2;
+      const px = Math.cos(sa) * ringR;
+      const py = Math.sin(sa) * ringR;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = `hsla(45, 100%, 75%, ${alpha})`;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Vertex dots
+    for (let s = 0; s < segments; s++) {
+      const sa = (s / segments) * Math.PI * 2;
+      const px = Math.cos(sa) * ringR;
+      const py = Math.sin(sa) * ringR;
+      ctx.beginPath();
+      ctx.arc(px, py, 2, 0, Math.PI * 2);
+      ctx.fillStyle = `hsla(50, 100%, 90%, ${alpha + 0.1})`;
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  // --- Main Body (hexagonal sun core) ---
+  ctx.save();
+  ctx.scale(breathe, breathe);
+
+  ctx.shadowColor = boss.glowColor;
+  ctx.shadowBlur = 40;
+
+  // Hexagonal body with warped edges
+  ctx.beginPath();
+  const hexPoints = 6;
+  for (let i = 0; i <= hexPoints; i++) {
+    const a = (i / hexPoints) * Math.PI * 2 + rotation * 0.2;
+    const warp = 1 + 0.06 * Math.sin(a * 3 + timeSec * 2.5);
+    const r = hs * 0.5 * warp;
+    const px = Math.cos(a) * r;
+    const py = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+
+  const bodyGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, hs * 0.5);
+  bodyGrad.addColorStop(0, 'hsl(50, 100%, 95%)');
+  bodyGrad.addColorStop(0.3, 'hsl(45, 100%, 75%)');
+  bodyGrad.addColorStop(0.7, boss.color);
+  bodyGrad.addColorStop(1, 'hsl(25, 80%, 30%)');
+  ctx.fillStyle = bodyGrad;
+  ctx.fill();
+
+  ctx.strokeStyle = 'hsla(45, 100%, 85%, 0.6)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  // --- Inner symbol (six-pointed star) ---
+  ctx.beginPath();
+  const starR = hs * 0.3;
+  const innerR = starR * 0.45;
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2 + rotation * 0.5;
+    const r = i % 2 === 0 ? starR : innerR;
+    const px = Math.cos(a) * r;
+    const py = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.fillStyle = 'hsla(50, 100%, 95%, 0.3)';
+  ctx.fill();
+  ctx.strokeStyle = 'hsla(45, 100%, 90%, 0.5)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  // --- Central Eye (circular, warm) ---
+  const eyeR = hs * 0.12;
+  const eyeGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, eyeR);
+  eyeGrad.addColorStop(0, 'hsl(0, 0%, 100%)');
+  eyeGrad.addColorStop(0.4, 'hsl(50, 100%, 90%)');
+  eyeGrad.addColorStop(1, 'hsl(40, 80%, 60%)');
+  ctx.fillStyle = eyeGrad;
+  ctx.beginPath();
+  ctx.arc(0, 0, eyeR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Pupil that tracks
+  let pupilOX = 0, pupilOY = 0;
+  if (boss.targetPlayerId) {
+    const lookA = Math.atan2(boss.vel.y, boss.vel.x);
+    pupilOX = Math.cos(lookA) * eyeR * 0.35;
+    pupilOY = Math.sin(lookA) * eyeR * 0.35;
+  }
+  ctx.fillStyle = 'hsl(20, 90%, 15%)';
+  ctx.beginPath();
+  ctx.arc(pupilOX, pupilOY, eyeR * 0.4, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Specular
+  ctx.fillStyle = 'hsla(50, 100%, 97%, 0.7)';
+  ctx.beginPath();
+  ctx.arc(pupilOX - eyeR * 0.2, pupilOY - eyeR * 0.2, eyeR * 0.15, 0, Math.PI * 2);
+  ctx.fill();
+
+  // --- Rage Mode: Supernova Build-up ---
+  if (healthFrac < 0.4) {
+    const rageA = 0.35 + 0.3 * Math.sin(now * 0.014);
+
+    // Solar prominences (arcing flame tendrils)
+    for (let i = 0; i < 10; i++) {
+      const a = (i / 10) * Math.PI * 2 + timeSec * 0.8;
+      const arcLen = hs * (0.35 + 0.2 * Math.sin(timeSec * 3 + i * 1.5));
+      const startR = hs * 0.25;
+      const ctrlAngle = a + Math.sin(timeSec * 4 + i) * 0.5;
+      const ctrlR = arcLen * 1.3;
+
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * startR, Math.sin(a) * startR);
+      ctx.quadraticCurveTo(
+        Math.cos(ctrlAngle) * ctrlR,
+        Math.sin(ctrlAngle) * ctrlR,
+        Math.cos(a + 0.3) * arcLen,
+        Math.sin(a + 0.3) * arcLen,
+      );
+      ctx.strokeStyle = `hsla(15, 100%, 55%, ${rageA})`;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    // White-hot core overload
+    const novaGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, hs * 0.4);
+    novaGrad.addColorStop(0, `hsla(50, 100%, 95%, ${rageA * 0.5})`);
+    novaGrad.addColorStop(0.5, `hsla(35, 100%, 70%, ${rageA * 0.25})`);
+    novaGrad.addColorStop(1, 'hsla(20, 100%, 50%, 0)');
+    ctx.fillStyle = novaGrad;
+    ctx.beginPath();
+    ctx.arc(0, 0, hs * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore(); // scale
+  ctx.restore(); // translate
+
+  drawBossOverhead(ctx, boss);
+}
+
 export function drawBossOverhead(ctx: CanvasRenderingContext2D, boss: Boss) {
   const hs = boss.size / 2;
 
