@@ -1,5 +1,5 @@
 import type { Boss } from '../../shared/types';
-import { drawLeviathan, drawDefaultBoss } from './renderers';
+import { drawLeviathan, drawDefaultBoss, drawVoidReaper } from './renderers';
 
 export interface BossDefinition {
   id: string;
@@ -63,6 +63,25 @@ export const BOSS_REGISTRY: BossDefinition[] = [
     shockwaveTriggerRange: 350,
     render: (ctx, boss, def, now) => {
       drawLeviathan(ctx, boss, def, now);
+    },
+  },
+  {
+    id: "void_reaper",
+    name: "VOID REAPER",
+    size: 110,
+    health: 90,
+    speed: 70,
+    damage: 35,
+    detectRange: 1400,
+    killScore: 1200,
+    color: "hsl(270, 60%, 20%)",
+    glowColor: "hsl(280, 100%, 65%)",
+    shockwaveRadius: 250,
+    shockwaveDamage: 30,
+    shockwaveCooldownMs: 5000,
+    shockwaveTriggerRange: 300,
+    render: (ctx, boss, def, now) => {
+      drawVoidReaper(ctx, boss, def, now);
     },
   },
 ];

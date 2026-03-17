@@ -69,3 +69,14 @@ export const COLORS = {
 export const LEVIATHAN_ROTATION_SPEED = 0.4;
 export const LEVIATHAN_TENTACLE_COUNT = 8;
 export const LEVIATHAN_TENTACLE_LENGTH = 1.2;
+
+/** Void Reaper boss visual constants */
+export const REAPER_SCYTHE_COUNT = 4;
+export const REAPER_SCYTHE_LENGTH = 1.6;
+export const REAPER_ROTATION_SPEED = 0.25;
+export const REAPER_VORTEX_RING_COUNT = 5;
+export const REAPER_EYE_SLIT_WIDTH = 0.6;
+export const REAPER_PARTICLE_COUNT = 24;
+
+/** Void Reaper shockwave visual duration (ms) */
+export const REAPER_VORTEX_DURATION_MS = 800;
