@@ -114,7 +114,9 @@ const Index = () => {
   setRoomId("solo");
   setGameMode("solo");
   setScreen("game");
-}, [playerName]);
+  audit.updatePlayer(trimmedName, selectedColor, selectedSkin);
+  audit.logEvent("game_start", { game_mode: "solo" });
+}, [playerName, audit, selectedColor, selectedSkin]);
 
 const handleLobbyClick = useCallback(() => {
   const confirmed = window.confirm(
