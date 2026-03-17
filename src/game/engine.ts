@@ -1134,7 +1134,7 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
 
   predictMovement(player, moveDir, dt, now);
 
-  if (this.input.keys.has(' ')) {
+  if (isControlPressed(this.input, 'dash')) {
     const canDash = !player.isDashing && now - player.lastDash > C.DASH_COOLDOWN_MS;
 
     if (canDash) {
