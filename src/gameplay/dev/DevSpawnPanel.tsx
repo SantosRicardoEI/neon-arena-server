@@ -8,7 +8,10 @@ interface DevSpawnPanelProps {
   onSelectCategory: (category: DevSpawnCategory) => void;
   onSelectOption: (category: DevSpawnCategory, optionId: DevSpawnOptionId) => void;
   onClear: () => void;
+  onDeselect: () => void;
 }
+
+
 
 const DevSpawnPanel = ({
   selectedCategory,
@@ -16,6 +19,7 @@ const DevSpawnPanel = ({
   onSelectCategory,
   onSelectOption,
   onClear,
+  onDeselect,
 }: DevSpawnPanelProps) => {
   const options = getDevSpawnOptionsByCategory(selectedCategory);
 
@@ -76,12 +80,20 @@ const DevSpawnPanel = ({
         Click on the map to spawn the selected entity.
       </div>
 
-      <button
-        onClick={onClear}
-        className="w-full px-2 py-2 border border-red-400 bg-red-400/10 text-red-200"
-      >
-        Clear All
-      </button>
+          <button
+  onClick={onDeselect}
+  className="w-full bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/40 px-2 py-1 rounded"
+>
+  Deselect
+</button>
+
+<button
+  onClick={onClear}
+  className="w-full bg-red-500/20 hover:bg-red-500/30 border border-red-500/40 px-2 py-1 rounded"
+>
+  Clear
+</button>
+
     </div>
   );
 };

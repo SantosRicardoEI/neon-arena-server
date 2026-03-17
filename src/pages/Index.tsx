@@ -317,14 +317,14 @@ const handleLobbyClick = useCallback(() => {
 
           <button
             onClick={handleDevTestStart}
-            className="bg-primary/80 text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
+            className="bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
           >
-            DEV TEST
-        </button>
+            SANDBOX
+          </button>
           
           <button
             onClick={handleLobbyClick}
-            className="bg-primary/70 text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
+            className="bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
           >
             ENTER LOBBY
           </button>

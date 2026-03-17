@@ -108,6 +108,16 @@ const GameCanvas = ({
     };
   }, [playerId, playerName, roomId, playerColor, playerSkin, mode]);
 
+  const canvasCursorClass =
+  mode === 'dev_test' && devSelectedOptionId
+    ? 'cursor-copy'
+    : 'cursor-crosshair';
+
+        const handleDeselect = () => {
+      setDevSelectedOptionId(null);
+      engineRef.current?.setDevSpawnSelection(devSelectedCategory, null);
+    };
+
   return (
     <div className="relative w-full h-full">
       {mode === 'dev_test' && (
@@ -117,12 +127,13 @@ const GameCanvas = ({
           onSelectCategory={handleSelectCategory}
           onSelectOption={handleSelectOption}
           onClear={handleClearDevWorld}
+          onDeselect={handleDeselect}
         />
       )}
 
       <canvas
         ref={canvasRef}
-        className="block w-full h-full cursor-crosshair"
+        className={`block w-full h-full ${canvasCursorClass}`}
         style={{ background: 'hsl(240, 10%, 4%)' }}
       />
     </div>
