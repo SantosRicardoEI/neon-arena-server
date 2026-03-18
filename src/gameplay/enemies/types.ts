@@ -10,6 +10,9 @@ export interface EnemyConfig {
   killScore: number;
   spawnWeight: number;
   hue: number;
+  explosionRadius?: number;
+  explosionDamage?: number;
+  explosionDurationMs?: number;
   colors: {
     passive: string;
     aggressive: string;

@@ -5,9 +5,9 @@
  * NO browser API dependencies — consumes abstract player state and timestamps.
  */
 import type { Player, Vec2 } from '../../shared/types';
-import { applyPlayerMovement, computeMovementVelocity } from '../../game/simulation';
-import { playerHasPowerUp } from '../../gameplay/powerups/utils';
+import { applyPlayerMovement } from '../../game/simulation';
 import * as C from '../../game/constants';
+import { getEffectiveMoveSpeed } from '../../shared/effective-stats';
 
 /**
  * Predict one tick of local player movement.
@@ -22,8 +22,17 @@ export function predictMovement(
   dt: number,
   now: number,
 ): void {
-  const hasSpeed = playerHasPowerUp(player, 'speed', now);
-  const vel = computeMovementVelocity(moveDir, player.score, hasSpeed);
+const speed = getEffectiveMoveSpeed(player, now);
+
+const len = Math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y);
+
+const vel =
+  len > 0
+    ? {
+        x: (moveDir.x / len) * speed,
+        y: (moveDir.y / len) * speed,
+      }
+    : { x: 0, y: 0 };
   player.vel.x = vel.x;
   player.vel.y = vel.y;
   applyPlayerMovement(player, dt, now, C.WORLD_WIDTH, C.WORLD_HEIGHT);

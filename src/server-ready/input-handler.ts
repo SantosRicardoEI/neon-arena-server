@@ -14,7 +14,6 @@ import type {
   ClientJoinMessage,
 } from '../shared/protocol/messages';
 import {
-  computeMovementVelocity,
   initiateDash,
 } from '../game/simulation';
 import { createPlayer } from '../gameplay/players/factory';
@@ -24,7 +23,9 @@ import {
   getEffectiveShootCooldown,
   getEffectiveReloadTime,
   getEffectiveMagazineSize,
-} from '../shared/effective-stats';import { respawnPlayer } from './room-state';
+  getEffectiveMoveSpeed,
+} from '../shared/effective-stats';
+import { respawnPlayer } from './room-state';
 
 /**
  * Apply a single client message to the authoritative game state.
@@ -82,8 +83,16 @@ function handleInput(
     player.reloadingUntil = 0;
   }
 
-  const hasSpeed = playerHasPowerUp(player, 'speed', now);
-  const vel = computeMovementVelocity(msg.moveDir, player.score, hasSpeed);
+const effectiveSpeed = getEffectiveMoveSpeed(player, now);
+const len = Math.sqrt(msg.moveDir.x * msg.moveDir.x + msg.moveDir.y * msg.moveDir.y);
+
+const vel =
+  len > 0
+    ? {
+        x: (msg.moveDir.x / len) * effectiveSpeed,
+        y: (msg.moveDir.y / len) * effectiveSpeed,
+      }
+    : { x: 0, y: 0 };
   player.vel.x = vel.x;
   player.vel.y = vel.y;
   player.aimAngle = msg.aimAngle;

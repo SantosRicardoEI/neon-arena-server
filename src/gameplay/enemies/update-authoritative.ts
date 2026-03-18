@@ -3,9 +3,9 @@ import * as C from '../../game/constants';
 import { getPlayerRadius } from '../../shared/scaling';
 import { dist } from '../../shared/math';
 import { getEnemyConfig } from './registry';
+import { getEffectiveIncomingDamage } from '../../shared/effective-combat';
 
 interface UpdateEnemiesAuthoritativeDeps {
-  playerHasPowerUp: (player: Player, type: 'shield', now: number) => boolean;
   createDroppedPoints: (pos: { x: number; y: number }, value: number, now: number) => DroppedPoints;
 }
 
@@ -76,9 +76,7 @@ export function updateEnemiesAuthoritative(
       const d = dist(enemy.pos, player.pos);
 
       if (d < playerRadius + cfg.size / 2) {
-        const damage = deps.playerHasPowerUp(player, 'shield', now)
-          ? Math.ceil(cfg.damage * C.POWERUP_SHIELD_DAMAGE_MULTIPLIER)
-          : cfg.damage;
+        const damage = getEffectiveIncomingDamage(player, cfg.damage, now);
 
         player.health -= damage;
         player.invincibleUntil = now + C.PLAYER_INVINCIBLE_MS;

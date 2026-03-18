@@ -34,11 +34,9 @@ import {
   updateGameState,
   updateClientVisualProjectiles,
   initiateDash,
-  computeMovementVelocity,
 } from './simulation';
 import { createProjectile } from '../gameplay/projectiles/factory';
 import { spawnDeathParticles } from '../gameplay/enemies/effects';
-import { playerHasPowerUp } from '../gameplay/powerups/utils';
 import { render } from './renderer';
 import { playShoot, playEnemyDeath, playCollect, playDamage, playGameOver, playDash, playHealthPickup, playReloadComplete, playDroppedPointsPickup, playPowerUpPickup, playBossShockwave } from './audio';
 import { music } from './music';
@@ -47,7 +45,9 @@ import {
   getEffectiveShootCooldown,
   getEffectiveReloadTime,
   getEffectiveMagazineSize,
-} from '../shared/effective-stats';import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
+  getEffectiveMoveSpeed,
+} from '../shared/effective-stats';
+import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
 import { submitScore } from '../lib/leaderboard';
 // Prediction modules
 import { InputBuffer } from '../client/prediction/input-buffer';
@@ -1156,8 +1156,18 @@ const pendingLocalProjectiles = this.state.projectiles.filter(p => {
   now: number,
 ): void {
   if (this.isLocalMode) {
-    const hasSpeed = playerHasPowerUp(player, 'speed', now);
-    const vel = computeMovementVelocity(moveDir, player.score, hasSpeed);
+
+    const speed = getEffectiveMoveSpeed(player, now);
+    const len = Math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y);
+
+    const vel =
+      len > 0
+        ? {
+            x: (moveDir.x / len) * speed,
+            y: (moveDir.y / len) * speed,
+          }
+        : { x: 0, y: 0 };
+
     player.vel.x = vel.x;
     player.vel.y = vel.y;
 

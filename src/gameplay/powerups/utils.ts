@@ -1,15 +1,8 @@
 import type { Player, PowerUpType } from '../../shared/types';
-import * as C from '../../game/constants';
+import { POWERUP_REGISTRY } from './registry';
 
 export function getPowerUpDuration(type: PowerUpType): number {
-  switch (type) {
-    case 'speed':
-      return C.POWERUP_SPEED_DURATION_MS;
-    case 'rapid_fire':
-      return C.POWERUP_RAPID_FIRE_DURATION_MS;
-    case 'shield':
-      return C.POWERUP_SHIELD_DURATION_MS;
-  }
+  return POWERUP_REGISTRY[type].durationMs;
 }
 
 export function playerHasPowerUp(

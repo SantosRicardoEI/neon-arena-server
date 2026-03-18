@@ -99,6 +99,9 @@ export const ENEMY_REGISTRY: Record<EnemyType, EnemyConfig> = {
     killScore: 20,
     spawnWeight: 10,
     hue: 50,
+    explosionRadius: 120,
+    explosionDamage: 30,
+    explosionDurationMs: 400,
     colors: {
       passive: 'hsl(55, 100%, 65%)',
       aggressive: 'hsl(45, 100%, 50%)',

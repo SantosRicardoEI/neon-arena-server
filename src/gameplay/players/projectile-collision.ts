@@ -9,9 +9,10 @@ import type {
 import * as C from '../../game/constants';
 import { getPlayerRadius } from '../../shared/scaling';
 import { dist } from '../../shared/math';
+import { getEffectiveIncomingDamage } from '../../shared/effective-combat';
+
 
 interface ProjectilePlayerCollisionDeps {
-  playerHasPowerUp: (player: Player, type: 'shield', now: number) => boolean;
   createDroppedPoints: (pos: Vec2, value: number, now: number) => DroppedPoints;
 }
 
@@ -32,9 +33,11 @@ export function processProjectileVsPlayers(
       now > player.invincibleUntil &&
       dist(projectile.pos, player.pos) < playerRadius + C.PROJECTILE_WIDTH
     ) {
-      const projectileDamage = deps.playerHasPowerUp(player, 'shield', now)
-        ? Math.ceil(C.PROJECTILE_DAMAGE * C.POWERUP_SHIELD_DAMAGE_MULTIPLIER)
-        : C.PROJECTILE_DAMAGE;
+        const projectileDamage = getEffectiveIncomingDamage(
+          player,
+          C.PROJECTILE_DAMAGE,
+          now,
+        );
 
       player.health -= projectileDamage;
       player.invincibleUntil = now + C.PLAYER_INVINCIBLE_MS;

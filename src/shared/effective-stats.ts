@@ -6,8 +6,7 @@ import {
   getMagazineSize,
 } from './scaling';
 
-import { playerHasPowerUp } from '../gameplay/powerups/utils';
-import * as C from '../game/constants';
+import { POWERUP_REGISTRY } from '../gameplay/powerups/registry';
 
 /**
  * Devolve o cooldown real de disparo do jogador,
@@ -16,8 +15,13 @@ import * as C from '../game/constants';
 export function getEffectiveShootCooldown(player: Player, now: number): number {
   let cooldown = getShootCooldown(player.score);
 
-  if (playerHasPowerUp(player, 'rapid_fire', now)) {
-    cooldown *= C.POWERUP_RAPID_FIRE_COOLDOWN_MULTIPLIER;
+  for (const pu of player.activePowerUps) {
+    if (now >= pu.expiresAt) continue;
+
+    const def = POWERUP_REGISTRY[pu.type];
+    if (def.modifyShootCooldown) {
+      cooldown = def.modifyShootCooldown(cooldown, player, now);
+    }
   }
 
   return cooldown;
@@ -30,8 +34,13 @@ export function getEffectiveShootCooldown(player: Player, now: number): number {
 export function getEffectiveMoveSpeed(player: Player, now: number): number {
   let speed = getPlayerSpeed(player.score);
 
-  if (playerHasPowerUp(player, 'speed', now)) {
-    speed *= C.POWERUP_SPEED_MULTIPLIER;
+  for (const pu of player.activePowerUps) {
+    if (now >= pu.expiresAt) continue;
+
+    const def = POWERUP_REGISTRY[pu.type];
+    if (def.modifyMoveSpeed) {
+      speed = def.modifyMoveSpeed(speed, player, now);
+    }
   }
 
   return speed;

@@ -10,9 +10,9 @@ import type {
 import { getPlayerRadius } from '../../shared/scaling';
 import { dist } from '../../shared/math';
 import { BOSS_REGISTRY } from '../../gameplay/bosses/registry';
+import { getEffectiveIncomingDamage } from '../../shared/effective-combat';
 
 interface UpdateBossesAuthoritativeDeps {
-  playerHasPowerUp: (player: Player, type: 'shield', now: number) => boolean;
   createDroppedPoints: (pos: Vec2, value: number, now: number) => DroppedPoints;
 }
 
@@ -105,9 +105,11 @@ export function updateBossesAuthoritative(
           if (player.health <= 0 || now <= player.invincibleUntil) continue;
 
           if (dist(boss.pos, player.pos) < definition.shockwaveRadius) {
-            const damage = deps.playerHasPowerUp(player, 'shield', now)
-              ? Math.ceil(definition.shockwaveDamage * C.POWERUP_SHIELD_DAMAGE_MULTIPLIER)
-              : definition.shockwaveDamage;
+            const damage = getEffectiveIncomingDamage(
+              player,
+              definition.shockwaveDamage,
+              now,
+            );
 
             player.health -= damage;
             player.invincibleUntil = now + C.PLAYER_INVINCIBLE_MS;
@@ -133,9 +135,7 @@ export function updateBossesAuthoritative(
       const d = dist(boss.pos, player.pos);
 
       if (d < playerRadius + boss.size / 2) {
-        const damage = deps.playerHasPowerUp(player, 'shield', now)
-          ? Math.ceil(boss.damage * C.POWERUP_SHIELD_DAMAGE_MULTIPLIER)
-          : boss.damage;
+        const damage = getEffectiveIncomingDamage(player, boss.damage, now);
 
         player.health -= damage;
         player.invincibleUntil = now + C.PLAYER_INVINCIBLE_MS;

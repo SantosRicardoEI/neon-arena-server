@@ -10,13 +10,11 @@ import {
 import * as C from '../game/constants';
 import {
   getPlayerRadius,
-  getPlayerSpeed,
   getReloadTime,
   getDashSpeedCurve,
   getDashDuration,
   getMagazineSize,
 } from '../shared/scaling';
-import { segmentIntersectsCircle } from '../shared/math';
 import { createEnemy } from '../gameplay/enemies/factory';
 import { updateEnemiesAuthoritative } from '../gameplay/enemies/update-authoritative';
 import { processProjectileVsEnemies } from '../gameplay/enemies/projectile-collision';
@@ -33,10 +31,10 @@ import {
 } from '../gameplay/pickups/factory';
 import {
   getPowerUpDuration,
-  playerHasPowerUp,
 } from '../gameplay/powerups/utils';
 import { spawnDeathParticles } from '../gameplay/enemies/effects';
-import { getEnemyConfig} from '../gameplay/enemies/registry';
+import { getEffectiveMoveSpeed } from '../shared/effective-stats';
+
 
 
 
@@ -76,15 +74,17 @@ export function applyPlayerMovement(
  */
 export function computeMovementVelocity(
   moveDir: Vec2,
-  score: number,
-  hasSpeedPowerUp: boolean,
+  speed: number,
 ): Vec2 {
-  let speed = getPlayerSpeed(score);
-  if (hasSpeedPowerUp) speed *= C.POWERUP_SPEED_MULTIPLIER;
   const len = Math.sqrt(moveDir.x * moveDir.x + moveDir.y * moveDir.y);
+
   if (len > 0) {
-    return { x: (moveDir.x / len) * speed, y: (moveDir.y / len) * speed };
+    return {
+      x: (moveDir.x / len) * speed,
+      y: (moveDir.y / len) * speed,
+    };
   }
+
   return { x: 0, y: 0 };
 }
 
@@ -301,14 +301,12 @@ if (!options.disableAutoEnemySpawns) {
   state.droppedPoints = state.droppedPoints.filter(dp => now - dp.createdAt < C.DROPPED_POINTS_LIFETIME_MS);
 
     updateEnemiesAuthoritative(state, dt, now, events, {
-    playerHasPowerUp,
-    createDroppedPoints,
-  });
+      createDroppedPoints,
+    });
 
     updateBossesAuthoritative(state, dt, now, events, {
-    playerHasPowerUp,
-    createDroppedPoints,
-  });
+      createDroppedPoints,
+    });
 
 
   const aliveProjectiles: Projectile[] = [];
@@ -322,10 +320,9 @@ if (!options.disableAutoEnemySpawns) {
     if (now - proj.createdAt > C.PROJECTILE_LIFETIME_MS) continue;
     if (proj.pos.x < 0 || proj.pos.x > C.WORLD_WIDTH || proj.pos.y < 0 || proj.pos.y > C.WORLD_HEIGHT) continue;
 
-      const hitEnemy = processProjectileVsEnemies(state, proj, now, events, {
-        playerHasPowerUp,
-        createDroppedPoints,
-        spawnDeathParticles,
+    const hitEnemy = processProjectileVsEnemies(state, proj, now, events, {
+      createDroppedPoints,
+      spawnDeathParticles,
     });
 
     if (hitEnemy) continue;
@@ -333,8 +330,7 @@ if (!options.disableAutoEnemySpawns) {
     const hitBoss = processProjectileVsBosses(state, proj, now, events);
     if (hitBoss) continue;
 
-      const hitPlayer = processProjectileVsPlayers(state, proj, now, events, {
-      playerHasPowerUp,
+    const hitPlayer = processProjectileVsPlayers(state, proj, now, events, {
       createDroppedPoints,
     });
     if (hitPlayer) continue;

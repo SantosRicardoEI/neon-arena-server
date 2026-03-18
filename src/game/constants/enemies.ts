@@ -1,10 +1,3 @@
-/** Raio da explosão do exploder ao morrer (px) */
-export const ENEMY_EXPLODER_EXPLOSION_RADIUS = 120;
-/** Dano da explosão do exploder */
-export const ENEMY_EXPLODER_EXPLOSION_DAMAGE = 30;
-/** Duração visual da explosão (ms) */
-export const ENEMY_EXPLODER_EXPLOSION_DURATION_MS = 400;
-
 /** Número de partículas por morte de inimigo */
 export const DEATH_PARTICLE_COUNT = 10;
 /** Velocidade mínima das partículas (px/s) */

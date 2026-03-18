@@ -10,9 +10,9 @@ import * as C from '../../game/constants';
 import { dist } from '../../shared/math';
 import { getEnemyConfig } from './registry';
 import type { EnemyType } from '../../shared/types';
+import { getEffectiveIncomingDamage } from '../../shared/effective-combat';
 
 interface ProjectileEnemyCollisionDeps {
-  playerHasPowerUp: (player: Player, type: 'shield', now: number) => boolean;
   createDroppedPoints: (pos: Vec2, value: number, now: number) => DroppedPoints;
   spawnDeathParticles: (
   gameState: GameState,
@@ -66,9 +66,11 @@ export function processProjectileVsEnemies(
 
             const d = dist(enemy.pos, player.pos);
             if (d < C.ENEMY_EXPLODER_EXPLOSION_RADIUS) {
-              const explosionDamage = deps.playerHasPowerUp(player, 'shield', now)
-                ? Math.ceil(C.ENEMY_EXPLODER_EXPLOSION_DAMAGE * C.POWERUP_SHIELD_DAMAGE_MULTIPLIER)
-                : C.ENEMY_EXPLODER_EXPLOSION_DAMAGE;
+              const explosionDamage = getEffectiveIncomingDamage(
+                player,
+                C.ENEMY_EXPLODER_EXPLOSION_DAMAGE,
+                now,
+              );
 
               player.health -= explosionDamage;
               player.invincibleUntil = now + C.PLAYER_INVINCIBLE_MS;
