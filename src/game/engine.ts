@@ -54,12 +54,9 @@ import { predictMovement } from '../client/prediction/movement-prediction';
 
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL || "ws://localhost:3001";
-const LOCAL_PREDICTION_STEP = 1 / 60;
 
-const LOCAL_RECONCILE_HARD_DISTANCE = 40;
-const LOCAL_RECONCILE_SNAP_DISTANCE = 120;
-
-const LOCAL_RECONCILE_HARD_LERP = 0.45;
+const LOCAL_RECONCILE_SNAP_DISTANCE = 18;
+const LOCAL_RECONCILE_LERP_FACTOR = 0.15;
 
 
 export class GameEngine {
@@ -89,7 +86,7 @@ export class GameEngine {
   private devSelectedOptionId: DevSpawnOptionId | null = null;
   private previousMouseDown = false;
   private devSpawnClickConsumed = false;
-  private localPredictionAccumulator = 0;
+
 
 /**
  * Cria uma nova instância do motor de jogo.
@@ -229,7 +226,6 @@ private setupSocketHandlers(): void {
     this.running = true;
     this.lastTime = performance.now();
     music.play('game');
-    this.localPredictionAccumulator = 0;
     this.loop(this.lastTime);
     document.addEventListener('keydown', this.onChatKeyDown);
   }
@@ -252,7 +248,6 @@ private setupSocketHandlers(): void {
     cancelAnimationFrame(this.animFrameId);
     this.animFrameId = 0;
     document.removeEventListener('keydown', this.onChatKeyDown);
-    this.localPredictionAccumulator = 0;
     this.socket?.disconnect();
     music.play('menu');
   }
@@ -749,20 +744,17 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
       p.skin = data.skin || p.skin;
 
       if (pid === this.localPlayerId) {
-        const dx = data.x - p.pos.x;
-        const dy = data.y - p.pos.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-
-        if (dist >= LOCAL_RECONCILE_SNAP_DISTANCE) {
-          p.pos.x = data.x;
-          p.pos.y = data.y;
-        } else if (dist >= LOCAL_RECONCILE_HARD_DISTANCE) {
-          p.pos.x += dx * LOCAL_RECONCILE_HARD_LERP;
-          p.pos.y += dy * LOCAL_RECONCILE_HARD_LERP;
-        }
-
+        p.pos.x = data.x;
+        p.pos.y = data.y;
         p.aimAngle = data.aimAngle;
+
         this.inputBuffer.discardUpTo(data.lastProcessedInputSeq);
+
+        const pendingInputs = this.inputBuffer.getAfter(data.lastProcessedInputSeq);
+        for (const input of pendingInputs) {
+          predictMovement(p, input.moveDir, 1 / 60, input.time);
+          p.aimAngle = input.aimAngle;
+        }
       } else {
         p.pos.x += (data.x - p.pos.x) * 0.5;
         p.pos.y += (data.y - p.pos.y) * 0.5;
@@ -1143,13 +1135,7 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
     return;
   }
 
-  // NO prediction for now (debug phase)
-  this.localPredictionAccumulator += dt;
-
-  while (this.localPredictionAccumulator >= LOCAL_PREDICTION_STEP) {
-    predictMovement(player, moveDir, LOCAL_PREDICTION_STEP, now);
-    this.localPredictionAccumulator -= LOCAL_PREDICTION_STEP;
-  }
+  predictMovement(player, moveDir, dt, now);
 
   if (isControlPressed(this.input, 'dash')) {
     const canDash = !player.isDashing && now - player.lastDash > C.DASH_COOLDOWN_MS;
