@@ -42,8 +42,11 @@ import { render } from './renderer';
 import { playShoot, playEnemyDeath, playCollect, playDamage, playGameOver, playDash, playHealthPickup, playReloadComplete, playDroppedPointsPickup, playPowerUpPickup, playBossShockwave } from './audio';
 import { music } from './music';
 import * as C from './constants';
-import { getShootCooldown, getReloadTime, getMagazineSize } from '../shared/scaling';
-import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
+import {
+  getEffectiveShootCooldown,
+  getEffectiveReloadTime,
+  getEffectiveMagazineSize,
+} from '../shared/effective-stats';import { updateBossSchedule, checkRoundTimer, resetRound, respawnPlayer, cleanupExpiredEntities, createGameState } from '../server-ready/room-state';
 import { submitScore } from '../lib/leaderboard';
 // Prediction modules
 import { InputBuffer } from '../client/prediction/input-buffer';
@@ -87,6 +90,7 @@ export class GameEngine {
   private previousMouseDown = false;
   private devSpawnClickConsumed = false;
   private nextClientShotId = 0;
+  private pendingLocalShotIds = new Set<string>();
 
 
 /**
@@ -254,6 +258,7 @@ private setupSocketHandlers(): void {
     this.animFrameId = 0;
     document.removeEventListener('keydown', this.onChatKeyDown);
     this.socket?.disconnect();
+    this.pendingLocalShotIds.clear();
     music.play('menu');
   }
 
@@ -687,25 +692,43 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
 
     this.state.enemies = nextEnemies;
 
-    const mergedProjectiles = gs.projectiles.map(np => {
-      const existing = existingProjectiles.get(np.id);
-      const trail = existing ? [...existing.trail] : [];
+    const authoritativeShotIds = new Set(
+  gs.projectiles
+    .map(p => p.clientShotId ?? null)
+    .filter((id): id is string => !!id)
+);
 
-      trail.push({ x: np.x, y: np.y });
-      if (trail.length > 8) trail.shift();
+for (const shotId of authoritativeShotIds) {
+  this.pendingLocalShotIds.delete(shotId);
+}
 
-      return {
-        id: np.id,
-        pos: { x: np.x, y: np.y },
-        vel: { x: np.vx, y: np.vy },
-        ownerId: np.ownerId,
-        createdAt: np.createdAt,
-        trail,
-        clientShotId: np.clientShotId ?? null,
-      };
-    });
+const pendingLocalProjectiles = this.state.projectiles.filter(p => {
+  if (!p.clientShotId) return false;
+  return this.pendingLocalShotIds.has(p.clientShotId);
+});
 
-    this.state.projectiles = mergedProjectiles;
+  const mergedProjectiles = gs.projectiles.map(np => {
+    const existing = existingProjectiles.get(np.id);
+    const trail = existing ? [...existing.trail] : [];
+
+    trail.push({ x: np.x, y: np.y });
+    if (trail.length > 8) trail.shift();
+
+    return {
+      id: np.id,
+      pos: { x: np.x, y: np.y },
+      vel: { x: np.vx, y: np.vy },
+      ownerId: np.ownerId,
+      createdAt: np.createdAt,
+      trail,
+      clientShotId: np.clientShotId ?? null,
+    };
+  });
+
+  this.state.projectiles = [
+    ...mergedProjectiles,
+    ...pendingLocalProjectiles,
+  ];
 
     if (gs.explosions) {
       const localNow = performance.now();
@@ -768,6 +791,9 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
       }
 
       p.health = data.health;
+      if (p.health <= 0) {
+        this.pendingLocalShotIds.clear();
+      }
       p.score = data.score;
       p.ammo = data.ammo;
       if (data.reloadingUntil > 0) {
@@ -1176,13 +1202,10 @@ private handleShootInput(player: Player, now: number): void {
     return;
   }
 
-  let shootCooldown = getShootCooldown(player.score);
-  if (playerHasPowerUp(player, 'rapid_fire', now)) {
-    shootCooldown *= C.POWERUP_RAPID_FIRE_COOLDOWN_MULTIPLIER;
-  }
+const shootCooldown = getEffectiveShootCooldown(player, now);
+const reloadTime = getEffectiveReloadTime(player, now);
+const magSize = getEffectiveMagazineSize(player, now);
 
-  const reloadTime = getReloadTime(player.score);
-  const magSize = getMagazineSize(player.score);
   const canShoot =
     player.ammo > 0 &&
     (player.reloadingUntil === 0 || now >= player.reloadingUntil);
@@ -1203,15 +1226,25 @@ private handleShootInput(player: Player, now: number): void {
   if (this.isLocalMode) {
     const proj = createProjectile(player, player.aimAngle, now);
     this.state.projectiles.push(proj);
-    } else {
-      const clientShotId = this.makeClientShotId();
+  } else {
+    const clientShotId = this.makeClientShotId();
 
-      this.socket?.send({
-        type: "client:shoot",
-        aimAngle: player.aimAngle,
-        clientShotId,
-      });
-    }
+    const localProjectile = createProjectile(
+      player,
+      player.aimAngle,
+      now,
+      clientShotId,
+    );
+
+    this.state.projectiles.push(localProjectile);
+    this.pendingLocalShotIds.add(clientShotId);
+
+    this.socket?.send({
+      type: "client:shoot",
+      aimAngle: player.aimAngle,
+      clientShotId,
+    });
+  }
 
   playShoot();
 
@@ -1233,13 +1266,13 @@ private handleReloadInput(player: Player, now: number): void {
   if (
     !isControlPressed(this.input, 'reload') ||
     player.health <= 0 ||
-    player.ammo >= getMagazineSize(player.score) ||
+    player.ammo >= getEffectiveMagazineSize(player, now) ||
     player.reloadingUntil !== 0
   ) {
     return;
   }
 
-  const reloadTime = getReloadTime(player.score);
+  const reloadTime = getEffectiveReloadTime(player, now);
 
   if (this.isLocalMode) {
     player.reloadingUntil = now + reloadTime;

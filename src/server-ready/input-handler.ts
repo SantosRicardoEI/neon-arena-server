@@ -20,8 +20,11 @@ import {
 import { createPlayer } from '../gameplay/players/factory';
 import { createProjectile } from '../gameplay/projectiles/factory';
 import { playerHasPowerUp } from '../gameplay/powerups/utils';
-import { getShootCooldown, getReloadTime, getMagazineSize } from '../shared/scaling';
-import { respawnPlayer } from './room-state';
+import {
+  getEffectiveShootCooldown,
+  getEffectiveReloadTime,
+  getEffectiveMagazineSize,
+} from '../shared/effective-stats';import { respawnPlayer } from './room-state';
 
 /**
  * Apply a single client message to the authoritative game state.
@@ -75,7 +78,7 @@ function handleInput(
   }
 
   if (player.reloadingUntil > 0 && now >= player.reloadingUntil) {
-    player.ammo = getMagazineSize(player.score);
+    player.ammo = getEffectiveMagazineSize(player, now);
     player.reloadingUntil = 0;
   }
 
@@ -99,7 +102,7 @@ function handleShoot(
   if (!player || player.health <= 0) return false;
   if (player.ammo <= 0 || player.reloadingUntil > now) return false;
 
-  const cooldown = getShootCooldown(player.score);
+  const cooldown = getEffectiveShootCooldown(player, now);
   if (now - player.lastShot < cooldown) return false;
 
 const proj = createProjectile(player, msg.aimAngle, now, msg.clientShotId);  state.projectiles.push(proj);
@@ -108,7 +111,7 @@ const proj = createProjectile(player, msg.aimAngle, now, msg.clientShotId);  sta
 
   // Auto-reload when clip empty
   if (player.ammo <= 0) {
-    player.reloadingUntil = now + getReloadTime(player.score);
+    player.reloadingUntil = now + getEffectiveReloadTime(player, now);
   }
 
   return true;
@@ -133,9 +136,9 @@ function handleReload(
   const player = state.players.get(playerId);
   if (!player || player.health <= 0) return false;
   if (player.reloadingUntil > now) return false;
-  if (player.ammo >= getMagazineSize(player.score)) return false;
+  if (player.ammo >= getEffectiveMagazineSize(player, now)) return false;
 
-  player.reloadingUntil = now + getReloadTime(player.score);
+  player.reloadingUntil = now + getEffectiveReloadTime(player, now);
   return true;
 }
 

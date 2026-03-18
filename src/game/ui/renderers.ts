@@ -9,7 +9,12 @@ import {
 import { getControlDisplayValue, getMovementDisplayValue } from '../../game/controls';
 import * as C from '../../game/constants';
 import { getEventColor, getEventIcon } from './chat-utils';
-
+import {
+  getEffectiveShootCooldown,
+  getEffectiveMoveSpeed,
+  getEffectiveReloadTime,
+  getEffectiveMagazineSize,
+} from '../../shared/effective-stats';
 import {
   getPlayerRadius,
   getShootCooldown,
@@ -148,8 +153,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, player: Player, w: number
   ctx.fillStyle = C.COLORS.hudText;
 
   
-  const reloadTime = getReloadTime(player.score);
-  const currentTime = now;
+  const reloadTime = getEffectiveReloadTime(player, now);  const currentTime = now;
   const isReloading = player.reloadingUntil > currentTime;
 
   if (isReloading) {
@@ -162,7 +166,7 @@ export function drawHUD(ctx: CanvasRenderingContext2D, player: Player, w: number
     ctx.fillStyle = C.COLORS.projectile;
     ctx.fillRect(hbX + 80, ammoY - 10, 60 * Math.max(0, Math.min(1, reloadProgress)), 10);
   } else {
-    const magSize = getMagazineSize(player.score);
+    const magSize = getEffectiveMagazineSize(player, now);
     ctx.fillText("AMMO", hbX, ammoY);
     for (let i = 0; i < magSize; i++) {
       const pipX = hbX + 50 + i * 14;
@@ -212,17 +216,22 @@ export function drawHUD(ctx: CanvasRenderingContext2D, player: Player, w: number
   }
 
   // Stats panel
-  drawStatsPanel(ctx, player, h);
+  drawStatsPanel(ctx, player, h, now);
 }
 
-export function drawStatsPanel(ctx: CanvasRenderingContext2D, player: Player, canvasHeight: number) {
+export function drawStatsPanel(
+  ctx: CanvasRenderingContext2D,
+  player: Player,
+  canvasHeight: number,
+  now: number,
+) {
   const score = player.score;
-  const atkSpeed = getShootCooldown(score);
-  const reload = getReloadTime(score);
+  const atkSpeed = getEffectiveShootCooldown(player, now);
+  const reload = getEffectiveReloadTime(player, now);
   const radius = getPlayerRadius(score);
-  const speed = getPlayerSpeed(score);
+  const speed = getEffectiveMoveSpeed(player, now);
   const dashCd = (C.DASH_COOLDOWN_MS / 1000).toFixed(1);
-  const magSize = getMagazineSize(score);
+  const magSize = getEffectiveMagazineSize(player, now);
 
   const x = C.UI_STATS_X;
   const lineH = 20;
