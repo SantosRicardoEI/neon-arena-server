@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Users, Plus, ArrowLeft } from "lucide-react";
 
+
 interface LobbyProps {
   playerName: string;
   playerId: string;
@@ -83,7 +84,11 @@ const Lobby = ({ onJoinRoom, onBack }: LobbyProps) => {
   }, [newRoomName, onJoinRoom]);
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-lg mx-auto">
+    
+      <div className="relative w-full">
+
+
+    <div className="relative z-10 flex flex-col items-center gap-6 w-full max-w-lg mx-auto">
       <div className="flex items-center gap-4 w-full">
         <button
           onClick={onBack}
@@ -191,6 +196,7 @@ const Lobby = ({ onJoinRoom, onBack }: LobbyProps) => {
           </div>
         </div>
       )}
+    </div>
     </div>
   );
 };

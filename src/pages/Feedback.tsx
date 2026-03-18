@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import AnimatedBackground from "@/components/AnimatedBackground";
+
 
 const Feedback = () => {
   const navigate = useNavigate();
@@ -28,11 +30,11 @@ const Feedback = () => {
     }
   };
 
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center bg-background bg-cover bg-center"
-      style={{ backgroundImage: "url('/background.png')" }}
-    >
+return (
+  <div className="relative w-full min-h-screen overflow-hidden bg-background">
+    <AnimatedBackground />
+
+    <div className="relative z-10 flex min-h-screen items-center justify-center">
       <div className="w-full max-w-md space-y-6 p-4">
         <button
           onClick={() => navigate('/')}
@@ -91,6 +93,7 @@ const Feedback = () => {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };

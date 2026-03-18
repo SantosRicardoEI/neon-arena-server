@@ -10,6 +10,8 @@ import * as C from "@/game/constants";
 import { useSitePresence } from "@/hooks/useSitePresence";
 import { usePlayerAudit } from "@/hooks/usePlayerAudit";
 import { Users, Monitor, Gamepad2 } from "lucide-react";
+import AnimatedBackground from "@/components/AnimatedBackground";
+import FeedbackForm from "@/components/FeedbackForm";
 
 type GameMode = "solo" | "online" | "dev_test";
 
@@ -35,11 +37,12 @@ const PLAYER_SKINS: { id: PlayerSkin; label: string }[] = [
   { id: "star", label: "Star" },
 ];
 
-type Screen = "menu" | "lobby" | "game";
+type Screen = "menu" | "lobby" | "game" | "feedback";
 
 const Index = () => {
   const navigate = useNavigate();
   const [screen, setScreen] = useState<Screen>("menu");
+  const [showMultiplayerHint, setShowMultiplayerHint] = useState(false);
   const [roomId, setRoomId] = useState("default");
   const [playerId] = useState(generatePlayerId);
   const [playerName, setPlayerName] = useState("");
@@ -129,16 +132,6 @@ const Index = () => {
   audit.logEvent("game_start", { game_mode: "solo" });
 }, [playerName, audit, selectedColor, selectedSkin]);
 
-const handleLobbyClick = useCallback(() => {
-  const confirmed = window.confirm(
-    "⚠️ Multiplayer is still experimental and may contain bugs.\n\nDo you want to continue?"
-  );
-
-  if (!confirmed) return;
-
-  handleGoToLobby();
-}, [handleGoToLobby]);
-
   // Game screen
   if (screen === "game") {
     return (
@@ -156,35 +149,32 @@ const handleLobbyClick = useCallback(() => {
     );
   }
 
-  // Lobby screen
-  if (screen === "lobby") {
-    return (
-      <div
-        className="flex min-h-screen items-center justify-center bg-background bg-cover bg-center p-4"
-        style={{ backgroundImage: "url('/background.png')" }}
-      >
-        <div className="w-full max-w-lg">
-          <Lobby
-            playerName={playerName}
-            playerId={playerId}
-            onJoinRoom={handleJoinRoom}
-            onBack={handleBackToMenu}
-          />
+  if (screen === "feedback") {
+  return (
+    <div className="relative min-h-screen overflow-hidden">
+      <AnimatedBackground />
+
+      <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <FeedbackForm onBack={() => setScreen("menu")} />
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Main menu
   return (
-    <div
-      className="flex min-h-screen items-center justify-center bg-background bg-cover bg-center"
-      style={{ backgroundImage: "url('/background.png')" }}
-    >
-      <div className="text-center space-y-8">
+    
+    
+<div className="relative min-h-screen overflow-hidden">
+  <AnimatedBackground />
 
+  <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
+    {screen === "menu" && (
+      <div className="text-center space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <h1 className="text-5xl font-bold text-foreground title-glow font-tabular tracking-wider">
+          <h1 className="text-5xl font-brold text-foreground title-glow font-tabular tracking-wider">
             NEON PULSE
           </h1>
           <span className="text-[10px] px-2 py-1 border border-primary text-primary font-tabular tracking-widest uppercase">
@@ -301,28 +291,40 @@ const handleLobbyClick = useCallback(() => {
               ))}
             </div>
           </div>
-          
-          <button
-            onClick={handleSoloStart}
-            className="bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
-          >
-            PLAY SOLO
-          </button>
+          </div>
 
-          <button
-            onClick={handleDevTestStart}
-            className="bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
-          >
-            SANDBOX
-          </button>
-          
-          <button
-            onClick={handleLobbyClick}
-            className="bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
-          >
-            ENTER LOBBY
-          </button>
-        </div>
+          <div className="flex items-center gap-3 w-full max-w-1xl mx-auto px-4">
+            <button
+              onClick={handleSoloStart}
+              className="w-full whitespace-nowrap bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm">
+              PLAY SOLO
+            </button>
+
+            <button
+              onClick={handleDevTestStart}
+              className="w-full whitespace-nowrap bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"            >
+              SANDBOX
+            </button>
+
+            <div
+              className="relative flex-1"
+              onMouseEnter={() => setShowMultiplayerHint(true)}
+              onMouseLeave={() => setShowMultiplayerHint(false)}
+            >
+              {showMultiplayerHint && (
+                <div className="absolute bottom-full left-1/2 z-10 mb-2 w-72 -translate-x-1/2 rounded-sm border border-yellow-500/40 bg-card/95 px-3 py-2 text-left text-xs font-tabular text-yellow-200 shadow-lg backdrop-blur-sm">
+                  ⚠ Multiplayer is still experimental and may be unstable or laggy.
+                </div>
+              )}
+
+              <button
+                onClick={handleGoToLobby}
+                className="w-full whitespace-nowrap bg-primary text-primary-foreground px-8 py-3 text-sm font-bold tracking-widest uppercase hover:opacity-90 transition-opacity rounded-sm"
+              >
+                ENTER LOBBY
+              </button>
+            </div>
+          </div>          
 
         <div className="flex items-center justify-center gap-4">
           <button
@@ -334,8 +336,9 @@ const handleLobbyClick = useCallback(() => {
           <span className="text-border">|</span>
           <SettingsMenu />
           <span className="text-border">|</span>
+
           <button
-            onClick={() => navigate("/feedback")}
+            onClick={() => setScreen("feedback")}
             className="text-muted-foreground text-xs font-tabular tracking-wider hover:text-primary transition-colors uppercase"
           >
             💬 Feedback
@@ -355,9 +358,21 @@ const handleLobbyClick = useCallback(() => {
             Ricardo Santos
           </a>
         </div>
-      </div>
 
-      <Leaderboard open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} />
+        <Leaderboard open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} />
+      </div>
+    )}
+        {screen === "lobby" && (
+      <div className="w-full max-w-lg">
+        <Lobby
+          playerName={playerName}
+          playerId={playerId}
+          onJoinRoom={handleJoinRoom}
+          onBack={handleBackToMenu}
+        />
+      </div>
+    )}
+    </div>
     </div>
   );
 };
