@@ -38,19 +38,21 @@ const Feedback = () => {
           onClick={() => navigate('/')}
           className="text-muted-foreground text-xs font-tabular tracking-wider hover:text-foreground transition-colors uppercase"
         >
-          ← Back to Arena
+          ← Back to Neon Pulse
         </button>
 
         <h1 className="text-3xl font-bold text-foreground hud-glow font-tabular tracking-wider text-center">
           FEEDBACK
         </h1>
         <p className="text-muted-foreground text-xs text-center">
-          Report bugs, suggest features, or share your thoughts
+          Report bugs, suggest features, or share your feedback about Neon Pulse
         </p>
 
         {sent ? (
           <div className="text-center space-y-2">
-            <p className="text-primary font-tabular text-sm hud-glow">Message sent! Thank you.</p>
+            <p className="text-primary font-tabular text-sm hud-glow">
+              Message sent! Thanks for helping improve Neon Pulse.
+            </p>
             <p className="text-muted-foreground text-xs">Redirecting...</p>
           </div>
         ) : (

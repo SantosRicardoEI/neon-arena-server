@@ -1,6 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import starLogo from "@/assets/star-logo.png";
 import GameCanvas from "@/components/GameCanvas";
 import Leaderboard from "@/components/Leaderboard";
 import Lobby from "@/components/Lobby";
@@ -183,15 +182,10 @@ const handleLobbyClick = useCallback(() => {
       style={{ backgroundImage: "url('/background.png')" }}
     >
       <div className="text-center space-y-8">
-        <img
-          src={starLogo}
-          alt="Neon Arena Logo"
-          className="w-32 h-32 mx-auto drop-shadow-[0_0_30px_hsla(210,100%,70%,0.6)] animate-pulse-slow"
-        />
 
         <div className="flex items-center justify-center gap-3">
           <h1 className="text-5xl font-bold text-foreground title-glow font-tabular tracking-wider">
-            NEON ARENA
+            NEON PULSE
           </h1>
           <span className="text-[10px] px-2 py-1 border border-primary text-primary font-tabular tracking-widest uppercase">
             BETA
