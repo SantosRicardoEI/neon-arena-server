@@ -152,6 +152,46 @@ export function updateCommon(
   };
 }
 
+/**
+ * Avança visualmente os projéteis no cliente entre snapshots.
+ *
+ * Não tem autoridade real:
+ * - não aplica dano;
+ * - não resolve colisões;
+ * - não cria eventos;
+ * - apenas move projéteis já existentes no estado local.
+ *
+ * Serve para evitar que projéteis recém-criados no servidor
+ * pareçam ficar "presos" junto ao jogador até chegar o próximo snapshot.
+ */
+export function updateClientVisualProjectiles(
+  state: GameState,
+  dt: number,
+  now: number,
+): void {
+  const visibleProjectiles: Projectile[] = [];
+
+  for (const proj of state.projectiles) {
+    proj.trail.push({ x: proj.pos.x, y: proj.pos.y });
+    if (proj.trail.length > 8) proj.trail.shift();
+
+    const nextPos = {
+      x: proj.pos.x + proj.vel.x * dt,
+      y: proj.pos.y + proj.vel.y * dt,
+    };
+
+    if (now - proj.createdAt > C.PROJECTILE_LIFETIME_MS) continue;
+    if (nextPos.x < 0 || nextPos.x > C.WORLD_WIDTH || nextPos.y < 0 || nextPos.y > C.WORLD_HEIGHT) continue;
+
+    proj.pos.x = nextPos.x;
+    proj.pos.y = nextPos.y;
+    visibleProjectiles.push(proj);
+  }
+
+  state.projectiles = visibleProjectiles;
+}
+
+
 // =============================================
 // Client-side prediction (visual snappiness, no authority)
 // =============================================
@@ -178,53 +218,10 @@ export function updateClientPrediction(
     playerKills: [],
   };
 
-
   // Predict projectile travel and hide impacts locally
   const visibleProjectiles: Projectile[] = [];
-  for (const proj of state.projectiles) {
-    proj.trail.push({ x: proj.pos.x, y: proj.pos.y });
-    if (proj.trail.length > 8) proj.trail.shift();
-
-    const nextPos = {
-      x: proj.pos.x + proj.vel.x * dt,
-      y: proj.pos.y + proj.vel.y * dt,
-    };
-
-    if (now - proj.createdAt > C.PROJECTILE_LIFETIME_MS) continue;
-    if (nextPos.x < 0 || nextPos.x > C.WORLD_WIDTH || nextPos.y < 0 || nextPos.y > C.WORLD_HEIGHT) continue;
-
-    let hitSomething = false;
-    for (const enemy of state.enemies) {
-      const cfg = getEnemyConfig(enemy.type);
-      if (segmentIntersectsCircle(proj.pos, nextPos, enemy.pos, cfg.size / 2 + C.PROJECTILE_WIDTH)) {
-        hitSomething = true;
-        break;
-      }
-    }
-    if (hitSomething) continue;
-
-    for (const boss of state.bosses) {
-      if (segmentIntersectsCircle(proj.pos, nextPos, boss.pos, boss.size / 2 + C.PROJECTILE_WIDTH)) {
-        hitSomething = true;
-        break;
-      }
-    }
-
-    for (const [pid, p] of state.players) {
-      if (pid === proj.ownerId || p.health <= 0) continue;
-      const pRadius = getPlayerRadius(p.score);
-      if (segmentIntersectsCircle(proj.pos, nextPos, p.pos, pRadius + C.PROJECTILE_WIDTH)) {
-        hitSomething = true;
-        break;
-      }
-    }
-    if (hitSomething) continue;
-
-    proj.pos.x = nextPos.x;
-    proj.pos.y = nextPos.y;
-    visibleProjectiles.push(proj);
-  }
-  state.projectiles = visibleProjectiles;
+  
+  updateClientVisualProjectiles(state, dt, now);
 
   updatePickupsPrediction(state, localPlayer, events);
 

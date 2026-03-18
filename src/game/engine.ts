@@ -32,6 +32,7 @@ import {
 } from './types';import { createPlayer } from '../gameplay/players/factory';
 import {
   updateGameState,
+  updateClientVisualProjectiles,
   initiateDash,
   computeMovementVelocity,
 } from './simulation';
@@ -500,18 +501,20 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
  * método não altera a simulação do mundo e devolve apenas um conjunto
  * vazio de eventos locais.
  */
-  private runOnlineFrame(_dt: number, _timestamp: number): SimulationEvents {
-    return {
-      enemiesKilled: [],
-      collectiblesGathered: [],
-      playersHit: [],
-      droppedPointsGathered: [],
-      healthPickupsGathered: [],
-      powerUpsGathered: [],
-      reloadCompletedPlayerIds: [],
-      playerKills: [],
-    };
-  }
+private runOnlineFrame(dt: number, timestamp: number): SimulationEvents {
+  updateClientVisualProjectiles(this.state, dt, timestamp);
+
+  return {
+    enemiesKilled: [],
+    collectiblesGathered: [],
+    playersHit: [],
+    droppedPointsGathered: [],
+    healthPickupsGathered: [],
+    powerUpsGathered: [],
+    reloadCompletedPlayerIds: [],
+    playerKills: [],
+  };
+}
 
 /**
  * Suaviza a posição visual dos inimigos com base na última posição alvo
