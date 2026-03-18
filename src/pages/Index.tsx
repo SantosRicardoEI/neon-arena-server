@@ -12,6 +12,7 @@ import { usePlayerAudit } from "@/hooks/usePlayerAudit";
 import { Users, Monitor, Gamepad2 } from "lucide-react";
 import AnimatedBackground from "@/components/AnimatedBackground";
 import FeedbackForm from "@/components/FeedbackForm";
+import { useDevelopmentUpdates, DevelopmentUpdatesPanel } from "@/features/development-updates";
 
 type GameMode = "solo" | "online" | "dev_test";
 
@@ -51,30 +52,7 @@ const Index = () => {
   const [selectedSkin, setSelectedSkin] = useState<PlayerSkin>("circle");
   const [tabId] = useState(getOrCreateTabId);
   const [gameMode, setGameMode] = useState<GameMode | null>(null);
-  type NoticeLevel = "info" | "warning" | "critical";
-
-  type Notice = {
-    level: NoticeLevel;
-    text: string;
-  };
-
-  const notices: Notice[] = [
-    {
-      level: "warning",
-      text: "Multiplayer is experimental and may be unstable or laggy.",
-    },
-  ];
-
-  function getNoticeIcon(level: NoticeLevel) {
-  switch (level) {
-    case "critical":
-      return "🔺"; // vermelho
-    case "warning":
-      return "⚠"; // amarelo
-    default:
-      return "•"; // normal
-  }
-}
+  const { updates: devUpdates } = useDevelopmentUpdates();
 
   const activeCounts = useSitePresence({
     tabId,
@@ -174,7 +152,7 @@ const Index = () => {
     {screen === "menu" && (
       <div className="text-center space-y-8">
         <div className="flex items-center justify-center gap-3">
-          <h1 className="text-5xl font-brold text-foreground title-glow font-tabular tracking-wider">
+          <h1 className="text-5xl font-bold text-foreground title-glow font-tabular tracking-wider">
             NEON PULSE
           </h1>
           <span className="text-[10px] px-2 py-1 border border-primary text-primary font-tabular tracking-widest uppercase">
@@ -186,34 +164,7 @@ const Index = () => {
           WASD and SPACE to move · Mouse to aim & shoot · Survive the arena
         </p>
 
-        {notices.length > 0 && (
-          <div className="max-w-md mx-auto bg-card/70 border border-border rounded-sm px-4 py-3 space-y-2 backdrop-blur-sm">
-            <div className="text-primary text-[10px] font-tabular tracking-widest uppercase">
-              Development Updates
-            </div>
-
-            {notices.map((notice, index) => (
-              <p
-    key={index}
-    className="text-foreground text-xs font-tabular text-left leading-relaxed flex gap-2 items-start"
-  >
-    <span
-      className={
-        notice.level === "critical"
-          ? "text-red-400"
-          : notice.level === "warning"
-          ? "text-yellow-400"
-          : "text-muted-foreground"
-      }
-    >
-      {getNoticeIcon(notice.level)}
-    </span>
-
-    <span>{notice.text}</span>
-              </p>
-            ))}
-          </div>
-        )}
+<DevelopmentUpdatesPanel updates={devUpdates} />
 
         {/* Online players indicator */}
         <div className="flex items-center justify-center">

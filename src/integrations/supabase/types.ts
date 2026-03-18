@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+            development_updates: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          level: string
+          sort_order: number
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level: string
+          sort_order?: number
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          level?: string
+          sort_order?: number
+          text?: string
+        }
+        Relationships: []
+      }
       feedback: {
         Row: {
           created_at: string
