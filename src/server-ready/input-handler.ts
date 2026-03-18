@@ -102,8 +102,7 @@ function handleShoot(
   const cooldown = getShootCooldown(player.score);
   if (now - player.lastShot < cooldown) return false;
 
-  const proj = createProjectile(player, msg.aimAngle, now);
-  state.projectiles.push(proj);
+const proj = createProjectile(player, msg.aimAngle, now, msg.clientShotId);  state.projectiles.push(proj);
   player.lastShot = now;
   player.ammo--;
 

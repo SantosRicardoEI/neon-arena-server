@@ -7,6 +7,7 @@ export function createProjectile(
   owner: Player,
   angle: number,
   now: number,
+  clientShotId: string | null = null,
 ): Projectile {
   const r = getPlayerRadius(owner.score);
 
@@ -23,5 +24,6 @@ export function createProjectile(
     ownerId: owner.id,
     createdAt: now,
     trail: [],
+    clientShotId,
   };
 }

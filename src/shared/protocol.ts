@@ -54,6 +54,7 @@ export function buildNetworkGameState(state: GameState, seq: number, now: number
       vy: q(p.vel.y),
       ownerId: p.ownerId,
       createdAt: p.createdAt,
+      clientShotId: p.clientShotId ?? null,
     })),
     explosions: state.explosions.map(e => ({
       x: e.pos.x, y: e.pos.y, radius: e.radius, createdAt: e.createdAt,

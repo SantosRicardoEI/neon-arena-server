@@ -86,6 +86,7 @@ export class GameEngine {
   private devSelectedOptionId: DevSpawnOptionId | null = null;
   private previousMouseDown = false;
   private devSpawnClickConsumed = false;
+  private nextClientShotId = 0;
 
 
 /**
@@ -175,6 +176,10 @@ private initOnline(
   });
 
   this.setupSocketHandlers();
+}
+
+private makeClientShotId(): string {
+  return `${this.localPlayerId}_shot_${this.nextClientShotId++}`;
 }
 
 /**
@@ -696,6 +701,7 @@ private runLocalFrame(dt: number, timestamp: number): SimulationEvents {
         ownerId: np.ownerId,
         createdAt: np.createdAt,
         trail,
+        clientShotId: np.clientShotId ?? null,
       };
     });
 
@@ -1197,12 +1203,15 @@ private handleShootInput(player: Player, now: number): void {
   if (this.isLocalMode) {
     const proj = createProjectile(player, player.aimAngle, now);
     this.state.projectiles.push(proj);
-  } else {
-    this.socket?.send({
-      type: "client:shoot",
-      aimAngle: player.aimAngle,
-    });
-  }
+    } else {
+      const clientShotId = this.makeClientShotId();
+
+      this.socket?.send({
+        type: "client:shoot",
+        aimAngle: player.aimAngle,
+        clientShotId,
+      });
+    }
 
   playShoot();
 

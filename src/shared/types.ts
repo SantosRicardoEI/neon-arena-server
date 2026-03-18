@@ -77,6 +77,7 @@ export interface Projectile {
   ownerId: string;
   createdAt: number;
   trail: Vec2[];
+  clientShotId?: string | null;
 }
 
 export interface Collectible {
@@ -230,7 +231,16 @@ export interface NetworkGameState {
     state: string;
   }[];  
   bosses: { id: string; definitionId: string; name: string; x: number; y: number; vx: number; vy: number; health: number; maxHealth: number; size: number; speed: number; damage: number; detectRange: number; killScore: number; color: string; glowColor: string; targetPlayerId: string | null; lastShockwave: number }[];
-  projectiles: { id: string; x: number; y: number; vx: number; vy: number; ownerId: string; createdAt: number }[];
+  projectiles: {
+  id: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  ownerId: string;
+  createdAt: number;
+  clientShotId?: string | null;
+}[];
   explosions: { x: number; y: number; radius: number; createdAt: number }[];
   players: {
     [id: string]: {

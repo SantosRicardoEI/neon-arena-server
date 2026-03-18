@@ -28,6 +28,7 @@ export interface ClientInputMessage {
 export interface ClientShootMessage {
   type: 'client:shoot';
   aimAngle: number;
+  clientShotId: string;
 }
 
 /** Player intends to dash in a direction */
